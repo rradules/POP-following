@@ -1,1 +1,1 @@
-# POP-following
+# Pareto-Optimal Policy Following
