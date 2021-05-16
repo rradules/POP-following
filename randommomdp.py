@@ -33,7 +33,7 @@ class RandomMOMDP(gym.Env):
         self._nobjectives = nobjectives
         self._nactions = nactions
 
-        self._seed()
+        self.seed()
         self.reset()
 
     def reset(self):
