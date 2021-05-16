@@ -23,6 +23,12 @@ gamma = 0.9  # Discount factor
 
 
 def check_dominated(candidate, vectors):
+    """
+    This function checks if a candidate vector is dominated by another vector in the set.
+    :param candidate: The candidate vector.
+    :param vectors: A set of vectors with type Tuple.
+    :return: Boolean whether the candidate is dominated.
+    """
     if not vectors:
         return False
     else:
@@ -34,6 +40,10 @@ def check_dominated(candidate, vectors):
 
 
 def pvi():
+    """
+    This function will run the Pareto Value Iteration algorithm.
+    :return: A set of non-dominated vectors per state in the MOMDP.
+    """
     nd_vectors = [{tuple(np.zeros(num_objectives))} for _ in range(num_states)]  # Set non-dominated vectors to zero.
 
     for run in range(10):  # We execute the algorithm a set amount of rounds.
@@ -71,6 +81,11 @@ def pvi():
 
 
 def save_vectors(nd_vectors):
+    """
+    This function will save the generated pareto coverage set to a CSV file.
+    :param nd_vectors: A set of non-dominated vectors per state.
+    :return: /
+    """
     columns = [f'Objective {i}' for i in range(num_objectives)]
     columns.insert(0, 'State')
     results = []
