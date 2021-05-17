@@ -54,8 +54,9 @@ def pvi():
             for action in range(num_actions):  # Loop over all actions possible in this state.
                 reward = reward_function[state, action]  # Get the reward from taking the action in the state.
                 future_rewards = {tuple(np.zeros(num_objectives))}  # The vectors that can be obtained in next states.
+                next_states = np.where(transition_function[state, action, :] > 0)[0]  # Next states with prob > 0
 
-                for next_state in range(num_states):  # Loop over the next states
+                for next_state in next_states:  # Loop over the next states
                     next_state_nd_vectors = nd_vectors[next_state]  # Non dominated vectors from the next state.
                     transition_prob = transition_function[state, action, next_state]  # Probability of this transition.
                     new_future_rewards = set()  # Empty set that will hold the updated future rewards
