@@ -2,6 +2,7 @@ import gym
 import numpy as np
 
 from gym import spaces
+import scipy.sparse as sp
 from gym.utils import seeding
 
 import random
@@ -13,7 +14,9 @@ class RandomMOMDP(gym.Env):
 
         # Generate a random MOMDP, that is, a reward function and a transition function
         self._transition_function = np.zeros(shape=(nstates, nactions, nstates))
-        self._reward_function = np.random.rand(nstates, nactions, nobjectives)
+        rew = sp.rand(nstates, nactions*nobjectives, density=0.1)
+        self._reward_function = rew.A.reshape(nstates, nactions, nobjectives)
+        #self._reward_function = np.random.rand(nstates, nactions, nobjectives)
 
         # Ensure that every state has at most nsuccessor successors
         for s in range(nstates):

@@ -10,7 +10,7 @@ register(
     id='RandomMOMDP-v0',
     entry_point='randommomdp:RandomMOMDP',
     reward_threshold=0.0,
-    kwargs={'nstates': 5, 'nobjectives': 3, 'nactions': 3, 'nsuccessor': 2, 'seed': 1}
+    kwargs={'nstates': 4, 'nobjectives': 2, 'nactions': 2, 'nsuccessor': 3, 'seed': 1}
 )
 
 env = gym.make('RandomMOMDP-v0')
@@ -22,7 +22,7 @@ transition_function = env._transition_function
 reward_function = env._reward_function
 
 gamma = 0.9  # Discount factor
-epsilon = 0.5  # How close we want to go to the PCS.
+epsilon = 0.3 #0.1  # How close we want to go to the PCS.
 
 
 def get_non_dominated(candidates):
