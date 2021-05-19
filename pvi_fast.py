@@ -41,10 +41,34 @@ def get_non_dominated(candidates):
         # find all points not dominated by i
         # since points are sorted by coordinate sum
         # i cannot dominate any points in 1,...,i-1
-        nd[i+1:n] = (candidates[i+1:] >= candidates[i]).any(1)
+        nd[i+1:n] = (candidates[i+1:] > candidates[i]).any(1)
         # keep points non-dominated so far
         candidates = candidates[nd[:n]]
     return candidates
+
+
+def pprune(candidates):
+    """
+    This function implements the pprune algorithm described in the PhD Thesis of Van Roijers.
+    :return: The set of non-dominated vectors.
+    """
+    non_dominated = set()  # Create a new non dominated set.
+    while len(candidates) > 0:
+        candidate = np.array(candidates.pop())  # Take the first from the left over candidates.
+        for vector in candidates:  # Loop over all other vectors.
+            vector = np.array(vector)
+            if (vector >= candidate).all():  # If the new vector pareto dominates this one.
+                candidate = vector  # Use this vector as the new candidate.
+
+        new_candidates = set()  # Delete every dominated vector from the set by just making a new candidates set.
+        for vector in candidates:
+            if (candidate < np.array(vector)).any():
+                new_candidates.add(vector)
+        candidates = new_candidates
+        candidate = tuple(candidate)
+        candidates.discard(candidate)  # Delete the candidate that made it if it is still in the set.
+        non_dominated.add(candidate)  # Add this one to the non dominated set.
+    return non_dominated
 
 
 def check_converged(new_nd_vectors, old_nd_vectors):
@@ -96,11 +120,11 @@ def pvi():
                             future_reward = np.array(curr_vec) + transition_prob * np.array(nd_vec)
                             new_future_rewards.add(tuple(future_reward))
 
-                    future_rewards = new_future_rewards  # Update the future rewards with the updated set.
+                    future_rewards = pprune(new_future_rewards)  # Update the future rewards with the updated set.
                 for future_reward in future_rewards:
                     value_vector = reward + gamma * np.array(future_reward)  # Calculate estimate of the value vector.
                     candidate_vectors.add(tuple(value_vector))
-            nd_vectors_update[state] = get_non_dominated(candidate_vectors)  # Update the non-dominated set.
+            nd_vectors_update[state] = pprune(candidate_vectors)  # Update the non-dominated set.
 
         if check_converged(nd_vectors_update, nd_vectors):
             return nd_vectors_update  # If converged, return the latest non-dominated vectors.
