@@ -10,8 +10,9 @@ register(
     id='RandomMOMDP-v0',
     entry_point='randommomdp:RandomMOMDP',
     reward_threshold=0.0,
-    kwargs={'nstates': 10, 'nobjectives': 2, 'nactions': 2, 'nsuccessor': 4, 'density':1, 'seed': 1}
+    kwargs={'nstates': 10, 'nobjectives': 2, 'nactions': 2, 'nsuccessor': 4, 'density': 1, 'seed': 1}
 )
+
 
 env = gym.make('RandomMOMDP-v0')
 num_states = env.observation_space.n
@@ -21,8 +22,8 @@ num_objectives = env._nobjectives
 transition_function = env._transition_function
 reward_function = env._reward_function
 
-gamma = 0.9  # Discount factor
-epsilon = 1  # How close we want to go to the PCS.
+gamma = 0.8  # Discount factor
+epsilon = 0.1  # How close we want to go to the PCS.
 
 
 def check_dominated(candidate, vectors):
@@ -98,12 +99,14 @@ def pvi():
                     value_vector = reward + gamma * np.array(future_reward)  # Calculate estimate of the value vector.
                     candidate_vectors.add(tuple(value_vector))
 
+            print(f'Candidates: {len(candidate_vectors)} for state {state}')
             for vec in candidate_vectors:  # Loop over all the candidate vectors.
                 dominated = check_dominated(np.array(vec), candidate_vectors)  # Check if the new vector is dominated.
                 if not dominated:
                     new_nd_vectors.add(vec)  # If it is not, add it to the non-dominated set.
 
             nd_vectors_update[state] = new_nd_vectors  # Update the non-dominated set.
+            print(f'Nd values: {len(nd_vectors_update[state])} for state {state}')
 
         if check_converged(nd_vectors_update, nd_vectors):
             return nd_vectors_update  # If converged, return the latest non-dominated vectors.
