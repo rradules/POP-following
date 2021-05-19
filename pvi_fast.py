@@ -11,7 +11,7 @@ register(
     id='RandomMOMDP-v0',
     entry_point='randommomdp:RandomMOMDP',
     reward_threshold=0.0,
-    kwargs={'nstates': 10, 'nobjectives': 2, 'nactions': 2, 'nsuccessor': 4, 'density': 1, 'seed': 1}
+    kwargs={'nstates': 10, 'nobjectives': 2, 'nactions': 2, 'nsuccessor': 4, 'seed': 1}
 )
 
 env = gym.make('RandomMOMDP-v0')
