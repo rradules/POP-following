@@ -1,3 +1,4 @@
+import time
 import copy
 import math
 import gym
@@ -10,7 +11,7 @@ register(
     id='RandomMOMDP-v0',
     entry_point='randommomdp:RandomMOMDP',
     reward_threshold=0.0,
-    kwargs={'nstates': 4, 'nobjectives': 2, 'nactions': 2, 'nsuccessor': 3, 'seed': 1}
+    kwargs={'nstates': 10, 'nobjectives': 2, 'nactions': 4, 'nsuccessor': 4, 'seed': 1}
 )
 
 env = gym.make('RandomMOMDP-v0')
@@ -21,8 +22,8 @@ num_objectives = env._nobjectives
 transition_function = env._transition_function
 reward_function = env._reward_function
 
-gamma = 0.9  # Discount factor
-epsilon = 0.3 #0.1  # How close we want to go to the PCS.
+gamma = 0.8  # Discount factor
+epsilon = 0.1  # How close we want to go to the PCS.
 
 
 def get_non_dominated(candidates):
@@ -94,6 +95,7 @@ def pvi():
     This function will run the Pareto Value Iteration algorithm.
     :return: A set of non-dominated vectors per state in the MOMDP.
     """
+    start = time.time()
     nd_vectors = [{tuple(np.zeros(num_objectives))} for _ in range(num_states)]  # Set non-dominated vectors to zero.
     nd_vectors_update = copy.deepcopy(nd_vectors)
 
@@ -103,7 +105,6 @@ def pvi():
         print(f'Value Iteration number: {run}')
         for state in range(num_states):  # Loop over all states.
             candidate_vectors = set()  # A set of new candidate non-dominated vectors for this state.
-            new_nd_vectors = set()  # Initialise an empty set to hold the new non-dominated vectors for this state.
 
             for action in range(num_actions):  # Loop over all actions possible in this state.
                 reward = reward_function[state, action]  # Get the reward from taking the action in the state.
@@ -121,16 +122,25 @@ def pvi():
                             new_future_rewards.add(tuple(future_reward))
 
                     future_rewards = pprune(new_future_rewards)  # Update the future rewards with the updated set.
+
                 for future_reward in future_rewards:
                     value_vector = reward + gamma * np.array(future_reward)  # Calculate estimate of the value vector.
                     candidate_vectors.add(tuple(value_vector))
+
+            print(f'Candidates: {len(candidate_vectors)} for state {state}')
             nd_vectors_update[state] = pprune(candidate_vectors)  # Update the non-dominated set.
+            print(f'Nd values: {len(nd_vectors_update[state])} for state {state}')
 
         if check_converged(nd_vectors_update, nd_vectors):
-            return nd_vectors_update  # If converged, return the latest non-dominated vectors.
+            break  # If converged, break from the while loop
         else:
             nd_vectors = copy.deepcopy(nd_vectors_update)  # Else perform a deep copy an go again.
             run += 1
+
+    end = time.time()
+    elapsed_seconds = (end - start)
+    print("Seconds elapsed: " + str(elapsed_seconds))
+    return nd_vectors_update
 
 
 def save_vectors(nd_vectors):
@@ -156,3 +166,4 @@ if __name__ == '__main__':
     for idx, vectors in enumerate(nd_vectors):
         print(repr(idx), repr(vectors))
     save_vectors(nd_vectors)
+
