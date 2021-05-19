@@ -9,15 +9,16 @@ import random
 import sys
 
 class RandomMOMDP(gym.Env):
-    def __init__(self, nstates, nobjectives, nactions, nsuccessor, seed):
+    def __init__(self, nstates, nobjectives, nactions, nsuccessor, density, seed):
         np.random.seed(seed)
 
         # Generate a random MOMDP, that is, a reward function and a transition function
         self._transition_function = np.zeros(shape=(nstates, nactions, nstates))
-        rew = sp.rand(nstates, nactions*nobjectives, density=0.05)
+        rew = sp.rand(nstates, nactions*nobjectives, density=density)
         self._reward_function = rew.A.reshape(nstates, nactions, nobjectives)
-        print(self._reward_function)
+
         #self._reward_function = np.random.rand(nstates, nactions, nobjectives)
+        print(self._reward_function)
 
         # Ensure that every state has at most nsuccessor successors
         for s in range(nstates):

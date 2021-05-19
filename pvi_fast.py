@@ -11,7 +11,7 @@ register(
     id='RandomMOMDP-v0',
     entry_point='randommomdp:RandomMOMDP',
     reward_threshold=0.0,
-    kwargs={'nstates': 10, 'nobjectives': 2, 'nactions': 4, 'nsuccessor': 4, 'seed': 1}
+    kwargs={'nstates': 10, 'nobjectives': 2, 'nactions': 2, 'nsuccessor': 4, 'density':1, 'seed': 1}
 )
 
 env = gym.make('RandomMOMDP-v0')
@@ -29,6 +29,7 @@ epsilon = 0.1  # How close we want to go to the PCS.
 def get_non_dominated(candidates):
     """returns the non-dominated subset of elements"""
     candidates = np.array(list(candidates))
+    #print(candidates)
     # sort candidates by decreasing sum of coordinates
     candidates = candidates[candidates.sum(1).argsort()[::-1]]
     # initialize a boolean mask for undominated points
@@ -45,6 +46,7 @@ def get_non_dominated(candidates):
         nd[i+1:n] = (candidates[i+1:] > candidates[i]).any(1)
         # keep points non-dominated so far
         candidates = candidates[nd[:n]]
+    #print('non-dom', candidates)
     return candidates
 
 
@@ -53,6 +55,7 @@ def pprune(candidates):
     This function implements the pprune algorithm described in the PhD Thesis of Van Roijers.
     :return: The set of non-dominated vectors.
     """
+    #print(candidates)
     non_dominated = set()  # Create a new non dominated set.
     while len(candidates) > 0:
         candidate = np.array(candidates.pop())  # Take the first from the left over candidates.
@@ -69,6 +72,8 @@ def pprune(candidates):
         candidate = tuple(candidate)
         candidates.discard(candidate)  # Delete the candidate that made it if it is still in the set.
         non_dominated.add(candidate)  # Add this one to the non dominated set.
+    #lst = np.array(list(non_dominated))
+    #print('non-dom', lst[lst.sum(1).argsort()[::-1]])
     return non_dominated
 
 
@@ -121,14 +126,14 @@ def pvi():
                             future_reward = np.array(curr_vec) + transition_prob * np.array(nd_vec)
                             new_future_rewards.add(tuple(future_reward))
 
-                    future_rewards = pprune(new_future_rewards)  # Update the future rewards with the updated set.
+                    future_rewards = get_non_dominated(new_future_rewards)  # Update the future rewards with the updated set.
 
                 for future_reward in future_rewards:
                     value_vector = reward + gamma * np.array(future_reward)  # Calculate estimate of the value vector.
                     candidate_vectors.add(tuple(value_vector))
 
             print(f'Candidates: {len(candidate_vectors)} for state {state}')
-            nd_vectors_update[state] = pprune(candidate_vectors)  # Update the non-dominated set.
+            nd_vectors_update[state] = get_non_dominated(candidate_vectors)  # Update the non-dominated set.
             print(f'Nd values: {len(nd_vectors_update[state])} for state {state}')
 
         if check_converged(nd_vectors_update, nd_vectors):
