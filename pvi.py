@@ -10,7 +10,7 @@ register(
     id='RandomMOMDP-v0',
     entry_point='randommomdp:RandomMOMDP',
     reward_threshold=0.0,
-    kwargs={'nstates': 5, 'nobjectives': 3, 'nactions': 3, 'nsuccessor': 2, 'seed': 1}
+    kwargs={'nstates': 4, 'nobjectives': 2, 'nactions': 2, 'nsuccessor': 3, 'seed': 1}
 )
 
 env = gym.make('RandomMOMDP-v0')
@@ -36,9 +36,11 @@ def check_dominated(candidate, vectors):
         return False
     else:
         for vector in vectors:
-            dominated = candidate < np.array(vector)
-            if dominated.all():
-                return True
+            vector = np.array(vector)
+            if not (candidate == vector).all():
+                dominated = candidate <= vector
+                if dominated.all():
+                    return True
         return False
 
 
