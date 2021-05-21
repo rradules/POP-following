@@ -9,8 +9,6 @@ import argparse
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-import numpy as np
-
 # Device configuration
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 #device = 'cpu' # Force CPU
@@ -33,7 +31,6 @@ class POP_NN(nn.Module):
         for layer in self.lins[:-1]:
             x = F.relu(layer(x))
         return self.lins[-1](x)
-        #F.softmax(self.lins[-1](x), dim=1)
 
 
 if __name__ == '__main__':
@@ -100,14 +97,10 @@ if __name__ == '__main__':
     loss_function = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-    #optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
-    #criterion = nn.NLLLoss()
-
     n_epochs = 1000
     predict_every = 20
     min_valid_loss = 1
     for epoch in range(n_epochs):
-        #for local_batch, local_labels in train_loader:
         for batch_idx, (data, target) in enumerate(train_loader):
             if torch.cuda.is_available():
                 data, labels = data.cuda(), target.cuda()
