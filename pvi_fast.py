@@ -138,7 +138,12 @@ def pvi():
             nn_dataset[state] = [dict_v, dict_c]
 
         if check_converged(nd_vectors_update, nd_vectors):
-            columns = ['N', 's', 'a', 'ns', 'vs']
+            columns = ['s', 'a', 'ns']
+            columns.extend([f'N{i}' for i in range(num_objectives)])
+            columns.extend([f'vs{i}' for i in range(num_objectives)])
+
+            print(columns)
+
             data = []
             for state in nn_dataset:
                 dict_v = nn_dataset[state][0]
@@ -149,7 +154,11 @@ def pvi():
                     N = (value - reward)/gamma
                     # nd next vectors, s, a, ns
                     info = dict_v[tuple(future_value)]
-                    data.append([N, info[1], info[2], info[3], info[0]])
+                    entry = [info[1], info[2], info[3]]
+                    entry.extend(N)
+                    entry.extend(info[0])
+                    data.append(entry)
+                    print(data)
                 assert(state == info[1])
             df = pd.DataFrame(data, columns=columns)
             df.to_csv(f'{path_data}NN_{file}.csv', index=False)
@@ -192,7 +201,7 @@ if __name__ == '__main__':
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
     parser.add_argument('-act', type=int, default=2, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
-    parser.add_argument('-seed', type=int, default=4, help="seed")
+    parser.add_argument('-seed', type=int, default=2, help="seed")
 
     args = parser.parse_args()
 
