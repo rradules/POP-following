@@ -44,6 +44,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    #reload environment
+    '''
     register(
         id='RandomMOMDP-v0',
         entry_point='randommomdp:RandomMOMDP',
@@ -59,25 +61,35 @@ if __name__ == '__main__':
 
     transition_function = env._transition_function
     reward_function = env._reward_function
+    '''
 
     path_data = f'results/'
-    file = f'MPD_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}'
+    file = f'MPD_s{args.states}_a{args.act}_o{args.obj}_ss{args.suc}_seed{args.seed}'
+
+    num_states = args.states
+    num_actions = args.act
+    num_objectives = args.obj
 
     with open(f'{path_data}{file}.json', "r") as read_file:
         env_info = json.load(read_file)
 
+    # Load training data
     data = pd.read_csv(f'{path_data}NN_{file}.csv')
 
+    # Not pretty normalisation for states and actions
     data['s'] = data['s'].values/num_states
     data['ns'] = data['ns'].values / num_states
     data['a'] = data['a'].values / num_actions
 
+    # Separate train from target (changes here is action should be a target)
     target = data[data.columns[-num_objectives:]].values
     train = data[data.columns[:-num_objectives]].values
 
+    # 80-20 train - test, 80 - 20 train - val splits
     X_train, X_test, y_train, y_test = train_test_split(train, target, test_size=0.2)
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2)
 
+    # Create the data loaders
     train = TensorDataset(torch.tensor(X_train, dtype=torch.float32),
                           torch.tensor(y_train, dtype=torch.float32))  # create your datset
     val = TensorDataset(torch.tensor(X_val, dtype=torch.float32),
@@ -89,11 +101,11 @@ if __name__ == '__main__':
     val_loader = DataLoader(val, shuffle=True, batch_size=16)  # create your dataloader
     test_loader = DataLoader(test, shuffle=True, batch_size=16)  # create your dataloader
 
+    # input output size
     d_in = num_objectives + 3
     d_out = num_objectives
+    # init NN
     model = POP_NN([d_in, 8, 4, d_out]).to(device)
-    model = model.float()
-
     loss_function = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
