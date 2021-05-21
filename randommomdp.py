@@ -4,6 +4,7 @@ import numpy as np
 from gym import spaces
 import scipy.sparse as sp
 from gym.utils import seeding
+import pickle
 
 import random
 import sys
@@ -11,14 +12,12 @@ import sys
 class RandomMOMDP(gym.Env):
     def __init__(self, nstates, nobjectives, nactions, nsuccessor, seed):
         np.random.seed(seed)
-
         # Generate a random MOMDP, that is, a reward function and a transition function
         self._transition_function = np.zeros(shape=(nstates, nactions, nstates))
         #rew = sp.rand(nstates, nactions*nobjectives, density=density)
         #self._reward_function = rew.A.reshape(nstates, nactions, nobjectives)
 
         self._reward_function = np.random.rand(nstates, nactions, nobjectives)
-        print(self._reward_function)
 
         # Ensure that every state has at most nsuccessor successors
         for s in range(nstates):
@@ -41,6 +40,11 @@ class RandomMOMDP(gym.Env):
         self.seed()
         self.reset()
 
+        self.info = {'states': nstates, 'objectives': nobjectives,
+                'actions': nactions, 'successors': nsuccessor,
+                'seed':seed, 'transition': self._transition_function.tolist(),
+                'reward': self._reward_function.tolist()}
+
     def reset(self):
         """ Reset the environment and return the initial state number
         """
@@ -59,3 +63,4 @@ class RandomMOMDP(gym.Env):
 
         # Return the current state, a reward and whether the episode terminates
         return self._state, rewards, self._timestep == 50, {}
+

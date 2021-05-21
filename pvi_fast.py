@@ -4,26 +4,12 @@ import math
 import gym
 import pandas as pd
 import numpy as np
+from utils import mkdir_p
+import argparse
+import json
 
 from gym.envs.registration import register
 
-register(
-    id='RandomMOMDP-v0',
-    entry_point='randommomdp:RandomMOMDP',
-    reward_threshold=0.0,
-    kwargs={'nstates': 10, 'nobjectives': 2, 'nactions': 2, 'nsuccessor': 4, 'seed': 1}
-)
-
-env = gym.make('RandomMOMDP-v0')
-num_states = env.observation_space.n
-num_actions = env.action_space.n
-num_objectives = env._nobjectives
-
-transition_function = env._transition_function
-reward_function = env._reward_function
-
-gamma = 0.8  # Discount factor
-epsilon = 0.1  # How close we want to go to the PCS.
 
 
 def get_non_dominated(candidates):
@@ -129,7 +115,7 @@ def pvi():
                     for curr_vec in future_rewards:  # Current set of future rewards.
                         for nd_vec in next_state_nd_vectors:  # Loop over the non-dominated vectors inn this next state.
                             future_reward = np.array(curr_vec) + transition_prob * np.array(nd_vec)
-                            future_reward = tuple(np.around(future_reward, decimals=5))
+                            future_reward = tuple(np.around(future_reward, decimals=decimals))
                             new_future_rewards.add(future_reward)
                             dict_future[future_reward] = [nd_vec, state, action, next_state]
 
@@ -140,7 +126,7 @@ def pvi():
 
                 for future_reward in future_rewards:
                     value_vector = tuple(reward + gamma * np.array(future_reward)) # Calculate estimate of the value vector.
-                    value_vector = tuple(np.around(value_vector, decimals=5))
+                    value_vector = tuple(np.around(value_vector, decimals=decimals))
                     candidate_vectors.add(value_vector)
                     dict_cand[value_vector] = [future_reward, reward]
 
@@ -166,8 +152,8 @@ def pvi():
                     data.append([N, info[1], info[2], info[3], info[0]])
                 assert(state == info[1])
             df = pd.DataFrame(data, columns=columns)
-            df.to_csv(f'MPD_s{num_states}_a{num_actions}_o{num_objectives}.csv', index=False)
-            break  # If converged, break from the while loop
+            df.to_csv(f'{path_data}NN_{file}.csv', index=False)
+            break  # If converged, break from the while loop and save data
         else:
             nd_vectors = copy.deepcopy(nd_vectors_update)  # Else perform a deep copy an go again.
             run += 1
@@ -175,15 +161,17 @@ def pvi():
     end = time.time()
     elapsed_seconds = (end - start)
     print("Seconds elapsed: " + str(elapsed_seconds))
+
     return nd_vectors_update
 
 
-def save_vectors(nd_vectors):
+def save_vectors(nd_vectors, file):
     """
     This function will save the generated pareto coverage set to a CSV file.
     :param nd_vectors: A set of non-dominated vectors per state.
     :return: /
     """
+
     columns = [f'Objective {i}' for i in range(num_objectives)]
     columns.insert(0, 'State')
     results = []
@@ -193,12 +181,57 @@ def save_vectors(nd_vectors):
             row.insert(0, state)
             results.append(row)
     df = pd.DataFrame(results, columns=columns)
-    df.to_csv('results.csv', index=False)
+    df.to_csv(f'{path_data}PCS_{file}.csv', index=False)
 
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-states', type=int, default=10, help="number of states")
+    parser.add_argument('-obj', type=int, default=2, help="number of objectives")
+    parser.add_argument('-act', type=int, default=2, help="number of actions")
+    parser.add_argument('-suc', type=int, default=4, help="number of successors")
+    parser.add_argument('-seed', type=int, default=4, help="seed")
+
+    args = parser.parse_args()
+
+    register(
+        id='RandomMOMDP-v0',
+        entry_point='randommomdp:RandomMOMDP',
+        reward_threshold=0.0,
+        kwargs={'nstates': args.states, 'nobjectives': args.obj,
+                'nactions': args.act, 'nsuccessor': args.suc, 'seed': args.seed}
+    )
+
+    env = gym.make('RandomMOMDP-v0')
+    num_states = env.observation_space.n
+    num_actions = env.action_space.n
+    num_objectives = env._nobjectives
+
+    transition_function = env._transition_function
+    reward_function = env._reward_function
+
+    print(reward_function)
+
+    gamma = 0.8  # Discount factor
+    epsilon = 0.1  # How close we want to go to the PCS.
+    decimals = 4
+
+    path_data = f'results/'  # /{mooc}/{hp.use_baseline}'
+    mkdir_p(path_data)
+
+    file = f'MPD_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}'
+
+    env_info = env.info
+    env_info['epsilon'] = epsilon
+    env_info['gamma'] = gamma
+
     nd_vectors = pvi()
-    for idx, vectors in enumerate(nd_vectors):
-        print(repr(idx), repr(vectors))
-    save_vectors(nd_vectors)
+
+    #for idx, vectors in enumerate(nd_vectors):
+    #    print(repr(idx), repr(vectors))
+
+    save_vectors(nd_vectors, file)
+    json.dump(env_info, open(f'{path_data}{file}.json', "w"))
 
