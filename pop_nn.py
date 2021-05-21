@@ -2,11 +2,13 @@ import gym
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import TensorDataset, DataLoader
 from gym.envs.registration import register
 import json
 import argparse
 import pandas as pd
-import ast
+from sklearn.model_selection import train_test_split
+
 import numpy as np
 
 # Device configuration
@@ -24,15 +26,14 @@ class POP_NN(nn.Module):
         super(POP_NN, self).__init__()
         self.d_layer = d_layer
         layer_list = [nn.Linear(d_layer[l], d_layer[l+1]) for l in range(len(d_layer) - 1)]
-        self.linears = nn.ModuleList(layer_list)
+        self.lins = nn.ModuleList(layer_list)
 
     def forward(self, x):
         x = x.view(-1, self.d_layer[0])
-        # relu(Wl x) for all hidden layer
-        for layer in self.linears[:-1]:
+        for layer in self.lins[:-1]:
             x = F.relu(layer(x))
-        # softmax(Wl x) for output layer
-        return F.log_softmax(self.linears[-1](x), dim=1)
+        return self.lins[-1](x)
+        #F.softmax(self.lins[-1](x), dim=1)
 
 
 if __name__ == '__main__':
@@ -42,7 +43,7 @@ if __name__ == '__main__':
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
     parser.add_argument('-act', type=int, default=2, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
-    parser.add_argument('-seed', type=int, default=1, help="seed")
+    parser.add_argument('-seed', type=int, default=2, help="seed")
 
     args = parser.parse_args()
 
@@ -68,20 +69,60 @@ if __name__ == '__main__':
     with open(f'{path_data}{file}.json', "r") as read_file:
         env_info = json.load(read_file)
 
-    #TODO: load environemnt params and dataset, train and evaluate network
+    data = pd.read_csv(f'{path_data}NN_{file}.csv')
+
+    data['s'] = data['s'].values/num_states
+    data['ns'] = data['ns'].values / num_states
+    data['a'] = data['a'].values / num_actions
+
+    target = data[data.columns[-num_objectives:]].values
+    train = data[data.columns[:-num_objectives]].values
+
+    X_train, X_test, y_train, y_test = train_test_split(train, target, test_size=0.2)
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2)
+
+    train = TensorDataset(torch.tensor(X_train, dtype=torch.float32),
+                          torch.tensor(y_train, dtype=torch.float32))  # create your datset
+    val = TensorDataset(torch.tensor(X_val, dtype=torch.float32),
+                        torch.tensor(y_val, dtype=torch.float32))  # create your datset
+    test = TensorDataset(torch.tensor(X_test, dtype=torch.float32),
+                         torch.tensor(y_test, dtype=torch.float32))  # create your datset
+
+    train_loader = DataLoader(train, shuffle=True, batch_size=16)  # create your dataloader
+    val_loader = DataLoader(val, shuffle=True, batch_size=16)  # create your dataloader
+    test_loader = DataLoader(test, shuffle=True, batch_size=16)  # create your dataloader
+
+    #TODO: train and evaluate network
     d_in = num_objectives + 3
-    d_out = num_objectives + 1
-    model = POP_NN([d_in, 128, 64, d_out]).to(device)
+    d_out = num_objectives
+    model = POP_NN([d_in, 8, 4, d_out]).to(device)
+    model = model.float()
+
+    loss_function = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     #optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
     #criterion = nn.NLLLoss()
 
-    #model, losses, accuracies = train_val_model(model, criterion, optimizer, dataloaders,
-    # num_epochs=10, log_interval=2)
+    n_epochs = 500
+    predict_every = 500
+    for epoch in range(n_epochs):
 
-    #TODO: Did not do % slit in  test train
-
-    data = pd.read_csv(f'{path_data}NN_{file}.csv')
-
-    target = torch.tensor(data[data.columns[-num_objectives:]].values)
-    train = torch.tensor(data[data.columns[:-num_objectives]].values)
+        #for local_batch, local_labels in train_loader:
+        for batch_idx, (data, target) in enumerate(train_loader):
+            # Transfer t
+            #data, target = data.to(device), target.to(device)
+            optimizer.zero_grad()
+            output = model(data)
+            loss = loss_function(output, target)
+            loss.backward()
+            optimizer.step()
+            if batch_idx % predict_every == 0:
+                print(f'Train Epoch: {epoch}, Loss: { loss.data}')
+'''
+    # Validation
+    with torch.set_grad_enabled(False):
+        for local_batch, local_labels in validation_generator:
+            # Transfer to GPU
+            local_batch, local_labels = local_batch.to(device), local_labels.to(device)
+'''
