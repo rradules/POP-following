@@ -124,6 +124,7 @@ def pvi():
                     for curr_vec in future_rewards:  # Current set of future rewards.
                         for nd_vec in next_state_nd_vectors:  # Loop over the non-dominated vectors inn this next state.
                             future_reward = np.array(curr_vec) + transition_prob * np.array(nd_vec)
+                            future_reward = np.around(future_reward, decimals=5)
                             new_future_rewards.add(tuple(future_reward))
 
                     future_rewards = get_non_dominated(new_future_rewards)  # Update the future rewards with the updated set.
@@ -132,9 +133,7 @@ def pvi():
                     value_vector = reward + gamma * np.array(future_reward)  # Calculate estimate of the value vector.
                     candidate_vectors.add(tuple(value_vector))
 
-            print(f'Candidates: {len(candidate_vectors)} for state {state}')
             nd_vectors_update[state] = get_non_dominated(candidate_vectors)  # Update the non-dominated set.
-            print(f'Nd values: {len(nd_vectors_update[state])} for state {state}')
 
         if check_converged(nd_vectors_update, nd_vectors):
             break  # If converged, break from the while loop
