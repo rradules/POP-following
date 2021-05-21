@@ -104,25 +104,38 @@ if __name__ == '__main__':
     #optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
     #criterion = nn.NLLLoss()
 
-    n_epochs = 500
-    predict_every = 500
+    n_epochs = 1000
+    predict_every = 20
+    min_valid_loss = 0.05
     for epoch in range(n_epochs):
 
         #for local_batch, local_labels in train_loader:
         for batch_idx, (data, target) in enumerate(train_loader):
-            # Transfer t
-            #data, target = data.to(device), target.to(device)
+            if torch.cuda.is_available():
+                data, labels = data.cuda(), target.cuda()
             optimizer.zero_grad()
             output = model(data)
             loss = loss_function(output, target)
             loss.backward()
             optimizer.step()
-            if batch_idx % predict_every == 0:
-                print(f'Train Epoch: {epoch}, Loss: { loss.data}')
-'''
-    # Validation
-    with torch.set_grad_enabled(False):
-        for local_batch, local_labels in validation_generator:
-            # Transfer to GPU
-            local_batch, local_labels = local_batch.to(device), local_labels.to(device)
-'''
+            train_loss = loss.data
+            #if batch_idx % predict_every == 0:
+            #    print(f'Train Epoch: {epoch}, Loss: {loss.data}')
+
+        model.eval()  # Optional when not using Model Specific layer
+        for batch_idx, (data, target) in enumerate(val_loader):
+            if torch.cuda.is_available():
+                data, target = data.cuda(), target.cuda()
+
+            output = model(data)
+            loss = loss_function(output, target)
+            valid_loss = loss.data
+            #if batch_idx % predict_every == 0:
+            #    print(f'Epoch {epoch} \t\t Training Loss: {train_loss } '
+            #      f'\t\t Validation Loss: {valid_loss }')
+
+            if min_valid_loss > valid_loss:
+                print(f'Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f}) \t Saving The Model')
+                min_valid_loss = valid_loss
+                # Saving State Dict
+                torch.save(model.state_dict(), f'{path_data}model_{file}.pth')
