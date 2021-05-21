@@ -43,7 +43,7 @@ if __name__ == '__main__':
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
     parser.add_argument('-act', type=int, default=2, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
-    parser.add_argument('-seed', type=int, default=2, help="seed")
+    parser.add_argument('-seed', type=int, default=1, help="seed")
 
     args = parser.parse_args()
 
@@ -92,7 +92,6 @@ if __name__ == '__main__':
     val_loader = DataLoader(val, shuffle=True, batch_size=16)  # create your dataloader
     test_loader = DataLoader(test, shuffle=True, batch_size=16)  # create your dataloader
 
-    #TODO: train and evaluate network
     d_in = num_objectives + 3
     d_out = num_objectives
     model = POP_NN([d_in, 8, 4, d_out]).to(device)
@@ -106,9 +105,8 @@ if __name__ == '__main__':
 
     n_epochs = 1000
     predict_every = 20
-    min_valid_loss = 0.05
+    min_valid_loss = 1
     for epoch in range(n_epochs):
-
         #for local_batch, local_labels in train_loader:
         for batch_idx, (data, target) in enumerate(train_loader):
             if torch.cuda.is_available():
