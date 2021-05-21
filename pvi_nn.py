@@ -21,7 +21,7 @@ class POP_NN(nn.Module):
     :param d_layer: array with the layer size configuration
     """
     def __init__(self, d_layer):
-        super(MLP, self).__init__()
+        super(POP_NN, self).__init__()
         self.d_layer = d_layer
         layer_list = [nn.Linear(d_layer[l], d_layer[l+1]) for l in range(len(d_layer) - 1)]
         self.linears = nn.ModuleList(layer_list)
