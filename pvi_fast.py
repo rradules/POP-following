@@ -103,6 +103,7 @@ def pvi():
     start = time.time()
     nd_vectors = [{tuple(np.zeros(num_objectives))} for _ in range(num_states)]  # Set non-dominated vectors to zero.
     nd_vectors_update = copy.deepcopy(nd_vectors)
+    nn_dataset = {}
 
     run = 0  # For printing purposes.
 
@@ -110,6 +111,10 @@ def pvi():
         print(f'Value Iteration number: {run}')
         for state in range(num_states):  # Loop over all states.
             candidate_vectors = set()  # A set of new candidate non-dominated vectors for this state.
+            dict_v = {}
+            dict_c = {}
+            dict_cand = {}
+            dict_future = {}
 
             for action in range(num_actions):  # Loop over all actions possible in this state.
                 reward = reward_function[state, action]  # Get the reward from taking the action in the state.
@@ -124,18 +129,44 @@ def pvi():
                     for curr_vec in future_rewards:  # Current set of future rewards.
                         for nd_vec in next_state_nd_vectors:  # Loop over the non-dominated vectors inn this next state.
                             future_reward = np.array(curr_vec) + transition_prob * np.array(nd_vec)
-                            future_reward = np.around(future_reward, decimals=5)
-                            new_future_rewards.add(tuple(future_reward))
+                            future_reward = tuple(np.around(future_reward, decimals=5))
+                            new_future_rewards.add(future_reward)
+                            dict_future[future_reward] = [nd_vec, state, action, next_state]
 
                     future_rewards = get_non_dominated(new_future_rewards)  # Update the future rewards with the updated set.
+                    dict_future_update = {tuple(rew): dict_future[tuple(rew)] for rew in future_rewards}
+                    dict_v.update(dict_future_update)
+                    assert (len(future_rewards) == len(dict_future_update))
 
                 for future_reward in future_rewards:
-                    value_vector = reward + gamma * np.array(future_reward)  # Calculate estimate of the value vector.
-                    candidate_vectors.add(tuple(value_vector))
+                    value_vector = tuple(reward + gamma * np.array(future_reward)) # Calculate estimate of the value vector.
+                    value_vector = tuple(np.around(value_vector, decimals=5))
+                    candidate_vectors.add(value_vector)
+                    dict_cand[value_vector] = [future_reward, reward]
 
             nd_vectors_update[state] = get_non_dominated(candidate_vectors)  # Update the non-dominated set.
+            dict_cand_update = {tuple(val): dict_cand[tuple(val)] for val in nd_vectors_update[state]}
+            dict_c.update(dict_cand_update)
+            assert(len(nd_vectors_update[state]) == len(dict_cand_update))
+            # here we can filter dict_v again if it gets too slow
+            nn_dataset[state] = [dict_v, dict_c]
 
         if check_converged(nd_vectors_update, nd_vectors):
+            columns = ['N', 's', 'a', 'ns', 'vs']
+            data = []
+            for state in nn_dataset:
+                dict_v = nn_dataset[state][0]
+                dict_c = nn_dataset[state][1]
+                for value in dict_c:
+                    future_value, reward = dict_c[value]
+                    # N = (val - rew)/gamma
+                    N = (value - reward)/gamma
+                    # nd next vectors, s, a, ns
+                    info = dict_v[tuple(future_value)]
+                    data.append([N, info[1], info[2], info[3], info[0]])
+                assert(state == info[1])
+            df = pd.DataFrame(data, columns=columns)
+            df.to_csv(f'MPD_s{num_states}_a{num_actions}_o{num_objectives}.csv', index=False)
             break  # If converged, break from the while loop
         else:
             nd_vectors = copy.deepcopy(nd_vectors_update)  # Else perform a deep copy an go again.
