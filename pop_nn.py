@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 
 # Device configuration
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-#device = 'cpu' # Force CPU
+# device = 'cpu' # Force CPU
 print(device)
 
 
@@ -122,7 +122,7 @@ if __name__ == '__main__':
             loss.backward()
             optimizer.step()
             train_loss = loss.data
-            #if batch_idx % predict_every == 0:
+            # if batch_idx % predict_every == 0:
             #    print(f'Train Epoch: {epoch}, Loss: {loss.data}')
 
         model.eval()  # Optional when not using Model Specific layer
@@ -133,7 +133,7 @@ if __name__ == '__main__':
             output = model(data)
             loss = loss_function(output, target)
             valid_loss = loss.data
-            #if batch_idx % predict_every == 0:
+            # if batch_idx % predict_every == 0:
             #    print(f'Epoch {epoch} \t\t Training Loss: {train_loss } '
             #      f'\t\t Validation Loss: {valid_loss }')
 
