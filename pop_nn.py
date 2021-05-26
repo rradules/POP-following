@@ -44,34 +44,12 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    #reload environment
-    '''
-    register(
-        id='RandomMOMDP-v0',
-        entry_point='randommomdp:RandomMOMDP',
-        reward_threshold=0.0,
-        kwargs={'nstates': args.states, 'nobjectives': args.obj,
-                'nactions': args.act, 'nsuccessor': args.suc, 'seed': args.seed}
-    )
-
-    env = gym.make('RandomMOMDP-v0')
-    num_states = env.observation_space.n
-    num_actions = env.action_space.n
-    num_objectives = env._nobjectives
-
-    transition_function = env._transition_function
-    reward_function = env._reward_function
-    '''
-
     path_data = f'results/'
     file = f'MPD_s{args.states}_a{args.act}_o{args.obj}_ss{args.suc}_seed{args.seed}'
 
     num_states = args.states
     num_actions = args.act
     num_objectives = args.obj
-
-    with open(f'{path_data}{file}.json', "r") as read_file:
-        env_info = json.load(read_file)
 
     # Load training data
     data = pd.read_csv(f'{path_data}NN_{file}.csv')
