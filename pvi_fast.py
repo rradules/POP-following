@@ -15,7 +15,11 @@ from gym.envs.registration import register
 
 
 def get_non_dominated(candidates):
-    """returns the non-dominated subset of elements"""
+    """
+    This function returns the non-dominated subset of elements.
+    :param candidates: The input set of candidate vectors.
+    :return: The non-dominated subset of this input set.
+    """
     candidates = np.array(list(candidates))
     #print(candidates)
     # sort candidates by decreasing sum of coordinates
@@ -99,10 +103,10 @@ def pvi():
     while True:  # We execute the algorithm until convergence.
         print(f'Value Iteration number: {run}')
         for state in range(num_states):  # Loop over all states.
-            #dict_v = {}
-            #dict_c = {}
-            #dict_cand = {}
-            #dict_future = {}
+            dict_v = {}
+            dict_c = {}
+            dict_cand = {}
+            dict_future = {}
 
             for action in range(num_actions):  # Loop over all actions possible in this state.
                 candidate_vectors = set()  # A set of new candidate non-dominated vectors for this state action.
@@ -121,29 +125,29 @@ def pvi():
                                 future_reward = np.array(curr_vec) + transition_prob * np.array(nd_vec)
                                 future_reward = tuple(np.around(future_reward, decimals=decimals))
                                 new_future_rewards.add(future_reward)
-                                #dict_future[future_reward] = [nd_vec, state, action, next_state]
+                                dict_future[future_reward] = [nd_vec, state, action, next_state]
 
                     future_rewards = get_non_dominated(new_future_rewards)  # Update the future rewards with the updated set.
-                    #dict_future_update = {tuple(rew): dict_future[tuple(rew)] for rew in future_rewards}
-                    #dict_v.update(dict_future_update)
-                    #assert (len(future_rewards) == len(dict_future_update))
+                    dict_future_update = {tuple(rew): dict_future[tuple(rew)] for rew in future_rewards}
+                    dict_v.update(dict_future_update)
+                    assert (len(future_rewards) == len(dict_future_update))
 
                 for future_reward in future_rewards:
                     value_vector = tuple(reward + gamma * np.array(future_reward)) # Calculate estimate of the value vector.
                     value_vector = tuple(np.around(value_vector, decimals=decimals))
                     candidate_vectors.add(value_vector)
 
-                    #dict_cand[value_vector] = [future_reward, reward]
+                    dict_cand[value_vector] = [future_reward, reward]
 
                 nd_vectors_update[state][action] = candidate_vectors  # Update the non-dominated set.
-            #dict_cand_update = {tuple(val): dict_cand[tuple(val)] for val in nd_vectors_update[state]}
-            #dict_c.update(dict_cand_update)
-            #assert(len(nd_vectors_update[state]) == len(dict_cand_update))
-            # here we can filter dict_v again if it gets too slow
-            #nn_dataset[state] = [dict_v, dict_c]
+                dict_cand_update = {tuple(val): dict_cand[tuple(val)] for val in nd_vectors_update[state][action]}
+                dict_c.update(dict_cand_update)
+                assert(len(nd_vectors_update[state][action]) == len(dict_cand_update))
+                # here we can filter dict_v again if it gets too slow
+                nn_dataset[state] = [dict_v, dict_c]
 
         if check_converged(nd_vectors_update, nd_vectors):
-            '''columns = ['s', 'a', 'ns']
+            columns = ['s', 'a', 'ns']
             columns.extend([f'N{i}' for i in range(num_objectives)])
             columns.extend([f'vs{i}' for i in range(num_objectives)])
 
@@ -166,7 +170,7 @@ def pvi():
                     print(data)
                 assert(state == info[1])
             df = pd.DataFrame(data, columns=columns)
-            df.to_csv(f'{path_data}NN_{file}.csv', index=False)'''
+            df.to_csv(f'{path_data}NN_{file}.csv', index=False)
             break  # If converged, break from the while loop and save data
         else:
             nd_vectors = copy.deepcopy(nd_vectors_update)  # Else perform a deep copy an go again.
@@ -206,7 +210,7 @@ if __name__ == '__main__':
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
     parser.add_argument('-act', type=int, default=2, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
-    parser.add_argument('-seed', type=int, default=2, help="seed")
+    parser.add_argument('-seed', type=int, default=1, help="seed")
 
     args = parser.parse_args()
 
