@@ -7,7 +7,10 @@ from gym.envs.registration import register
 import json
 import argparse
 import pandas as pd
+from pvi import get_non_dominated
 from pop_nn import POP_NN
+from utils import is_dominated
+import numpy as np
 
 
 
@@ -53,10 +56,20 @@ if __name__ == '__main__':
 
     pcs = pd.read_csv(f'{path_data}PCS_{file}.csv')
 
+    pcs[['Objective 0', 'Objective 1']] = pcs[['Objective 0', 'Objective 1']].apply(pd.to_numeric)
+
     s0 = env.reset()
-    select = pcs[['Action', 'Objective 0', 'Objective 1']].loc[pcs['State'] == s0].sample().values[0]
-    a0 = select[0]
-    v0 = select[1:]
+    dom = True
+    subset = pcs[['Action', 'Objective 0', 'Objective 1']].loc[pcs['State'] == s0]
+    cand = [subset[['Objective 0', 'Objective 1']].to_numpy()]
+
+    # Select initial non-dominated value
+    while dom:
+        select = subset.sample().values[0]
+        a0 = select[0]
+        v0 = select[1:]
+        dom = is_dominated(v0, cand)
+
     print(s0, a0, v0)
 
 
