@@ -43,7 +43,6 @@ if __name__ == '__main__':
     transition_function = env._transition_function
     reward_function = env._reward_function
 
-
     path_data = f'results/'
     file = f'MPD_s{args.states}_a{args.act}_o{args.obj}_ss{args.suc}_seed{args.seed}'
 
