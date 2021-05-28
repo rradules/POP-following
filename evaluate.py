@@ -27,13 +27,13 @@ def eval_POP_NN(env, s_prev, a_prev, v_prev):
 
     done = False
     with torch.no_grad():
-        while not(done):
+        while not done:
             s_next, r_next, done, _ = env.step(a_prev)
             print(s_prev, a_prev, s_next, r_next, done)
             N = (v_prev - r_next)/gamma
-            input = [s_prev / num_states, a_prev / num_actions, s_next / num_states]
-            input.extend(N)
-            v_next = model.forward(torch.tensor(input, dtype=torch.float32))[0].numpy()
+            inputNN = [s_prev / num_states, a_prev / num_actions, s_next / num_states]
+            inputNN.extend(N)
+            v_next = model.forward(torch.tensor(inputNN, dtype=torch.float32))[0].numpy()
             Q_next = pcs.loc[pcs['State'] == s_next]
             i_min = np.linalg.norm(Q_next[objective_columns] - v_next, axis=1).argmin()
             a_prev = Q_next['Action'].iloc[i_min]
@@ -99,7 +99,6 @@ if __name__ == '__main__':
     dom = True
     subset = pcs[['Action', 'Objective 0', 'Objective 1']].loc[pcs['State'] == s0]
     cand = [subset[objective_columns].to_numpy()]
-
 
     # Select initial non-dominated value
     while dom:
