@@ -11,6 +11,47 @@ from pvi import get_non_dominated
 from pop_nn import POP_NN
 from utils import is_dominated
 import numpy as np
+import copy
+
+def select_action(state, pcs, value_vector):
+    return 0 #TODO: stub
+
+def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=1000, value_selector=None):
+    #Assuming the state in the environment is indeed state0;
+    #the reset needs to happen outside of this function
+    time = 0
+    stop = False
+    action = action0
+    state  = state0
+    returns = None
+    cur_disc = 1
+    while(time<max_time and not stop):
+        if (value_vector is not None) and (action is None) :
+            action = select_action(state, pcs, value_vector)
+        else:
+            action = env.action_space.sample()
+        #action picked, now let's execute it
+        observation, reward_vec, done, info = env.step(action)
+        
+        #keeping returns statistics:
+        if(returns is None):
+            returns=cur_disc*reward_vec
+        else: 
+            returns += cur_disc*reward_vec
+        #lowering the next timesteps forefactor:
+        cur_disc*=gamma
+        
+        if value_vector is not None:
+            n_vector = value_vector-reward_vec
+            n_vector /= gamma
+            print(n_vector) 
+            value_vector=None #TODO:replace
+            
+        action=None
+        stop=done
+        time+=1
+        
+    return returns
 
 
 
@@ -70,6 +111,8 @@ if __name__ == '__main__':
         dom = is_dominated(v0, cand)
 
     print(s0, a0, v0)
+    returns = rollout(env, s0, a0, v0, pcs, 0.8)
+    print(returns)
 
 
     '''
