@@ -15,7 +15,11 @@ import random
 import copy
 
 def select_action(state, pcs, value_vector):
-    return 0 #TODO: stub
+    Q_next = pcs.loc[pcs['State'] == state]
+    i_min = np.linalg.norm(Q_next[objective_columns] - value_vector, axis=1).argmin()
+    action = Q_next['Action'].iloc[i_min]
+    print(str(value_vector)+","+str(action)) 
+    return action
 
 def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=1000, value_selector=None):
     #Assuming the state in the environment is indeed state0;
@@ -45,8 +49,8 @@ def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=1000, value
         if value_vector is not None:
             n_vector = value_vector-reward_vec
             n_vector /= gamma
-            print(n_vector) 
-            value_vector=None #TODO:replace
+            #print(n_vector) 
+            #value_vector=None #TODO:replace
             
         action=None
         stop=done
@@ -151,7 +155,7 @@ if __name__ == '__main__':
     print(s0, a0, v0)
     returns = rollout(env, s0, a0, v0, pcs, 0.8)
     print(returns)
-    eval_POP_NN(env, s0, a0, v0)
+    #eval_POP_NN(env, s0, a0, v0)
 
 
 
