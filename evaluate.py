@@ -14,12 +14,44 @@ import numpy as np
 import random
 import copy
 
+class Stav:
+    def __init__(self, state, probab, action=None, vector=None):
+        self.state = state
+        self.prob = probab
+        self.action = action
+        self.vector = vector
+        self.pcs_table = (pcs.loc[pcs['State'] == state]) #hacky, should be an argument
+        self.pick_random()
+        
+    def __str__(self):
+        return "("+str(self.state)+","+str(self.prob)+","+str(self.action)+","+str(self.vector)+")"
+        
+    def pick_random(self):
+        row = self.pcs_table.sample().to_numpy()[0]
+        self.action = int(row[1])
+        self.vector = row[2:]
+        
+    
+def toStavs(trans):
+    result = []
+    for i in range(len(trans)):
+        if(trans[i]>0):
+            tup = Stav(i,trans[i])
+            print(str(tup))
+            result.append(tup)
+    return result
+
 def select_action(state, pcs, value_vector):
     Q_next = pcs.loc[pcs['State'] == state]
     i_min = np.linalg.norm(Q_next[objective_columns] - value_vector, axis=1).argmin()
     action = Q_next['Action'].iloc[i_min]
-    print(str(value_vector)+","+str(action)) 
+    #print(str(value_vector)+","+str(action)) 
     return action
+    
+def popf_local_search(problem, pcs, n_vector):
+    #for index, row in self.pcs_table.iterrows():
+    #    print(str(self.state)+" | "+str(index))
+    return
 
 def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=1000, value_selector=None):
     #Assuming the state in the environment is indeed state0;
@@ -36,7 +68,7 @@ def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=1000, value
         else:
             action = env.action_space.sample()
         #action picked, now let's execute it
-        observation, reward_vec, done, info = env.step(action)
+        next_state, reward_vec, done, info = env.step(action)
         
         #keeping returns statistics:
         if(returns is None):
@@ -49,12 +81,18 @@ def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=1000, value
         if value_vector is not None:
             n_vector = value_vector-reward_vec
             n_vector /= gamma
+            next_probs = transition_function[state][action] #hacky, should be an argument
+            problem = toStavs(next_probs)
+            break
             #print(n_vector) 
             #value_vector=None #TODO:replace
-            
+        
+        state=next_state    
         action=None
         stop=done
         time+=1
+        
+    
         
     return returns
 
