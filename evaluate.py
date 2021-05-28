@@ -35,7 +35,6 @@ def eval_POP_NN(env, s_prev, a_prev, v_prev):
             input.extend(N)
             v_next = model.forward(torch.tensor(input, dtype=torch.float32))[0].numpy()
             Q_next = pcs.loc[pcs['State'] == s_next]
-            objective_columns = ['Objective 0', 'Objective 1']
             i_min = np.linalg.norm(Q_next[objective_columns] - v_next, axis=1).argmin()
             a_prev = Q_next['Action'].iloc[i_min]
             s_prev = s_next
@@ -52,7 +51,6 @@ if __name__ == '__main__':
     parser.add_argument('-act', type=int, default=2, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
     parser.add_argument('-seed', type=int, default=1, help="seed")
-
     parser.add_argument('-exp_seed', type=int, default=42, help="experiment seed")
 
     args = parser.parse_args()
@@ -82,10 +80,11 @@ if __name__ == '__main__':
     path_data = f'results/'
     file = f'MPD_s{args.states}_a{args.act}_o{args.obj}_ss{args.suc}_seed{args.seed}'
 
-
     num_states = args.states
     num_actions = args.act
     num_objectives = args.obj
+
+    objective_columns = ['Objective 0', 'Objective 1']
 
     gamma = 0.8  # Discount factor
 
@@ -94,19 +93,19 @@ if __name__ == '__main__':
 
     pcs = pd.read_csv(f'{path_data}PCS_{file}.csv')
 
-    pcs[['Objective 0', 'Objective 1']] = pcs[['Objective 0', 'Objective 1']].apply(pd.to_numeric)
+    pcs[objective_columns] = pcs[objective_columns].apply(pd.to_numeric)
 
     s0 = env.reset()
     dom = True
     subset = pcs[['Action', 'Objective 0', 'Objective 1']].loc[pcs['State'] == s0]
-    cand = [subset[['Objective 0', 'Objective 1']].to_numpy()]
+    cand = [subset[objective_columns].to_numpy()]
 
 
     # Select initial non-dominated value
     while dom:
         select = subset.sample()
         a0 = select['Action'].iloc[0]
-        v0 = select[['Objective 0', 'Objective 1']].iloc[0].values
+        v0 = select[objective_columns].iloc[0].values
         dom = is_dominated(v0, cand)
 
     print(s0, a0, v0)
