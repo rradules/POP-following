@@ -23,6 +23,7 @@ class Stav:
         self.tvector = self.prob*vector if vector is not None else None
         self.pcs_table = (pcs.loc[pcs['State'] == state]) #hacky, should be an argument
         self.pcs_list = self.precompute_tuples()
+        self.pprune_tuples()
         self.pick_random()
         
     def __str__(self):
@@ -33,6 +34,21 @@ class Stav:
         self.action = int(row[1])
         self.vector = row[2:]
         self.tvector = self.prob*self.vector
+        
+    def pprune_tuples(self):
+        new_tuples = []
+        while(len(self.pcs_list)>0):
+            nn_tups = []
+            ctup = self.pcs_list[0]
+            for tup in self.pcs_list:
+                if(np.greater_equal(tup[1], ctup[1]).all()):
+                    ctup = tup
+            for tup in self.pcs_list:
+                if(not np.greater_equal(ctup[1], tup[1]).all()):
+                    nn_tups.append(tup)
+            new_tuples.append(ctup)
+            self.pcs_list = nn_tups
+        self.pcs_list = new_tuples
         
     def precompute_tuples(self):
         result = []
@@ -75,7 +91,7 @@ def select_action(state, pcs, value_vector):
     #print(str(value_vector)+","+str(action)) 
     return action
     
-def popf_local_search(problem, n_vector, cur_vector = None, score = None):
+def popf_local_search(problem, n_vector, state, cur_vector = None, score = None):
     if(cur_vector is None or score is None):
         for stav in problem:
             cur_vector = stav.tvector if cur_vector is None else cur_vector+stav.tvector
@@ -88,9 +104,37 @@ def popf_local_search(problem, n_vector, cur_vector = None, score = None):
             improved, cur_vector, score = stav.improve_step(n_vector, cur_vector, score)
             if improved:
                 break
-    return cur_vector, score
+    for stav in problem:
+        if stav.state == state:
+            action = stav.action
+            value_vector = stav.vector            
+    return cur_vector, score, action, value_vector
+    
+def popf_iter_local_search(problem, n_vector, state, reps=10, pertrub_p=1.0):
+    cur_vector=None
+    for stav in problem:
+        stav.pick_random()
+        cur_vector = stav.tvector if cur_vector is None else cur_vector+stav.tvector
+        if stav.state == state:
+            action = stav.action
+            value_vector = stav.vector
+    score = np.linalg.norm(n_vector - cur_vector)
+    for i in range(reps):
+        for stav in problem:
+            rnumber = random.random()
+            if(rnumber<pertrub_p):
+                stav.pick_random()
+        cur_vector_rep, score_rep, action_rep, value_vector_rep = popf_local_search(problem, n_vector, state)
+        if(score_rep < score):
+            cur_vector = cur_vector_rep
+            score = score_rep
+            action = action_rep
+            value_vector = value_vector_rep
+    return cur_vector, score, action, value_vector        
+        
+    
 
-def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=1000):
+def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=200, optimiser=popf_local_search):
     #Assuming the state in the environment is indeed state0;
     #the reset needs to happen outside of this function
     time = 0
@@ -118,14 +162,7 @@ def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=1000):
             n_vector /= gamma
             next_probs = transition_function[state][action] #hacky, should be an argument
             problem = toStavs(next_probs)
-            popf_local_search(problem, n_vector)
-            action=None
-            for stav in problem:
-                if stav.state == next_state:
-                    action = stav.action
-                    value_vector = stav.vector
-            #print(n_vector) 
-            #value_vector=None #TODO:replace
+            nm1, nm2, action, value_vector = optimiser(problem, n_vector, next_state)
         
         state=next_state    
         stop=done
@@ -229,11 +266,38 @@ if __name__ == '__main__':
     print(s0, a0, v0)
     returns = rollout(env, s0, a0, v0, pcs, 0.8)
     print(returns)
-    for x in range(10):
+    acc = np.array([0.0,0.0])
+    times=25
+    for x in range(times):
         env.reset()
         env._state = s0
         returns = rollout(env, s0, a0, v0, pcs, 0.8)
-        print(returns)
+        print(str(x+1)+":"+str(returns), end=" ", flush=True)
+        acc = acc+returns
+    av = acc/times
+    l = np.linalg.norm(v0 - av)
+    print("\nls: "+str(l)+" vec="+str(av))
+    acc = np.array([0.0,0.0])
+    for x in range(times):
+        env.reset()
+        env._state = s0
+        returns = rollout(env, s0, a0, v0, pcs, 0.8, optimiser=popf_iter_local_search)
+        print(str(x+1)+": "+str(returns), end=" ", flush=True)
+        acc = acc+returns
+    av = acc/times
+    l = np.linalg.norm(v0 - av)
+    print("\nmls: "+str(l)+" vec="+str(av))
+    acc = np.array([0.0,0.0])
+    for x in range(times):
+        env.reset()
+        env._state = s0
+        func = lambda a, b, c : popf_iter_local_search(a,b,c,reps=10, pertrub_p=0.3)
+        returns = rollout(env, s0, a0, v0, pcs, 0.8, optimiser=popf_iter_local_search)
+        print(str(x+1)+": "+str(returns), end=" ", flush=True)
+        acc = acc+returns
+    av = acc/times
+    l = np.linalg.norm(v0 - av)
+    print("\nils: "+str(l)+" vec="+str(av))
 
     #eval_POP_NN(env, s0, a0, v0)
 
