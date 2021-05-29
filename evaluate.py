@@ -20,16 +20,44 @@ class Stav:
         self.prob = probab
         self.action = action
         self.vector = vector
+        self.tvector = self.prob*vector if vector is not None else None
         self.pcs_table = (pcs.loc[pcs['State'] == state]) #hacky, should be an argument
+        self.pcs_list = self.precompute_tuples()
         self.pick_random()
         
     def __str__(self):
-        return "("+str(self.state)+","+str(self.prob)+","+str(self.action)+","+str(self.vector)+")"
+        return "("+str(self.state)+","+str(self.prob)+","+str(self.action)+","+str(self.vector)+","+str(self.tvector)+")"
         
     def pick_random(self):
         row = self.pcs_table.sample().to_numpy()[0]
         self.action = int(row[1])
         self.vector = row[2:]
+        self.tvector = self.prob*self.vector
+        
+    def precompute_tuples(self):
+        result = []
+        for index, row in self.pcs_table.iterrows():
+            line = row.to_numpy()
+            act  = int(line[1])
+            vec  = line[2:]
+            tvec = self.prob * vec
+            result.append( (act,vec,tvec) )
+        return result
+        
+    def improve_step(self, n_vector, cur_vector, cur_score = None):
+        cur_score = np.linalg.norm(n_vector - cur_vector) if cur_score is None else cur_score
+        min_vec = n_vector - cur_vector + self.tvector
+        nw_cur_vector = cur_vector - self.tvector
+        for tup in self.pcs_list:
+            n_score = np.linalg.norm(min_vec + tup[2])
+            if(n_score < cur_score):
+                self.action = tup[0]
+                self.vector = tup[1]
+                self.tvector= tup[2]
+                cur_score = n_score
+                return True, (nw_cur_vector+self.tvector), cur_score
+        return False, cur_vector, cur_score
+        
         
     
 def toStavs(trans):
@@ -37,7 +65,6 @@ def toStavs(trans):
     for i in range(len(trans)):
         if(trans[i]>0):
             tup = Stav(i,trans[i])
-            print(str(tup))
             result.append(tup)
     return result
 
@@ -48,12 +75,22 @@ def select_action(state, pcs, value_vector):
     #print(str(value_vector)+","+str(action)) 
     return action
     
-def popf_local_search(problem, pcs, n_vector):
-    #for index, row in self.pcs_table.iterrows():
-    #    print(str(self.state)+" | "+str(index))
-    return
+def popf_local_search(problem, n_vector, cur_vector = None, score = None):
+    if(cur_vector is None or score is None):
+        for stav in problem:
+            cur_vector = stav.tvector if cur_vector is None else cur_vector+stav.tvector
+        score = np.linalg.norm(n_vector - cur_vector)
+    improved = True
+    while(improved): 
+        improved = False
+        random.shuffle(problem)
+        for stav in problem:
+            improved, cur_vector, score = stav.improve_step(n_vector, cur_vector, score)
+            if improved:
+                break
+    return cur_vector, score
 
-def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=1000, value_selector=None):
+def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=1000):
     #Assuming the state in the environment is indeed state0;
     #the reset needs to happen outside of this function
     time = 0
@@ -63,9 +100,7 @@ def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=1000, value
     returns = None
     cur_disc = 1
     while(time<max_time and not stop):
-        if (value_vector is not None) and (action is None) :
-            action = select_action(state, pcs, value_vector)
-        else:
+        if (value_vector is None):
             action = env.action_space.sample()
         #action picked, now let's execute it
         next_state, reward_vec, done, info = env.step(action)
@@ -83,17 +118,18 @@ def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=1000, value
             n_vector /= gamma
             next_probs = transition_function[state][action] #hacky, should be an argument
             problem = toStavs(next_probs)
-            break
+            popf_local_search(problem, n_vector)
+            action=None
+            for stav in problem:
+                if stav.state == next_state:
+                    action = stav.action
+                    value_vector = stav.vector
             #print(n_vector) 
             #value_vector=None #TODO:replace
         
         state=next_state    
-        action=None
         stop=done
-        time+=1
-        
-    
-        
+        time+=1  
     return returns
 
 def eval_POP_NN(env, s_prev, a_prev, v_prev):
@@ -193,6 +229,12 @@ if __name__ == '__main__':
     print(s0, a0, v0)
     returns = rollout(env, s0, a0, v0, pcs, 0.8)
     print(returns)
+    for x in range(10):
+        env.reset()
+        env._state = s0
+        returns = rollout(env, s0, a0, v0, pcs, 0.8)
+        print(returns)
+
     #eval_POP_NN(env, s0, a0, v0)
 
 
