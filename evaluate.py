@@ -69,23 +69,26 @@ def eval_POP_NN(env, s_prev, a_prev, v_prev):
     model = POP_NN([d_in, 8, 4, d_out])
     model.load_state_dict(torch.load(f'{path_data}model_{file}.pth'))
     model.eval()
+    ret_vector = np.zeros(num_objectives)
+    cur_disc = 1
 
     done = False
     with torch.no_grad():
         while not done:
             s_next, r_next, done, _ = env.step(a_prev)
-            print(s_prev, a_prev, s_next, r_next, done)
+            ret_vector += cur_disc*r_next
+            cur_disc *= gamma
+            #print(s_prev, a_prev, s_next, r_next, done)
             N = (v_prev - r_next)/gamma
             inputNN = [s_prev / num_states, a_prev / num_actions, s_next / num_states]
             inputNN.extend(N)
             v_next = model.forward(torch.tensor(inputNN, dtype=torch.float32))[0].numpy()
-            Q_next = pcs.loc[pcs['State'] == s_next]
-            i_min = np.linalg.norm(Q_next[objective_columns] - v_next, axis=1).argmin()
-            a_prev = Q_next['Action'].iloc[i_min]
+            a_prev = select_action(s_next, pcs, objective_columns, v_next)
             s_prev = s_next
             v_prev = v_next
 
-    print(v0, v_next)
+    #print(v0, ret_vector)
+    return ret_vector
 
 
 if __name__ == '__main__':
@@ -155,11 +158,26 @@ if __name__ == '__main__':
         dom = is_dominated(v0, cand)
 
     print(s0, a0, v0)
-    times = 100
+    times = 200
 
     # opt_str = args.optimiser
-    opt_strs = ['ls', 'mls', 'ils']
-    for opt_str in opt_strs:
+    # 'ls', 'mls', 'ils', 'nn'
+    opt_str = 'nn'
+
+    if opt_str == 'nn':
+        acc = np.array([0.0, 0.0])
+        for x in range(times):
+            env.reset()
+            env._state = s0
+            returns = eval_POP_NN(env, s0, a0, v0)
+            # print(f'{x+1}: {returns}', flush=True)
+            acc = acc + returns
+
+        av = acc / times
+        l = np.linalg.norm(v0 - av)
+        print(f'NN: {l}, vec={av}')
+
+    else:
         if opt_str == 'ls':
             optimiser = popf_local_search
         elif opt_str == 'mls':
@@ -180,7 +198,7 @@ if __name__ == '__main__':
         l = np.linalg.norm(v0 - av)
         print(f'{opt_str}: {l}, vec={av}')
 
-    #eval_POP_NN(env, s0, a0, v0)
+
 
 
 

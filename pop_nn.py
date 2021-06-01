@@ -87,7 +87,7 @@ if __name__ == '__main__':
     loss_function = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-    n_epochs = 1000
+    n_epochs = 1500
     predict_every = 20
     min_valid_loss = 1
     for epoch in range(n_epochs):
