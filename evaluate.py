@@ -66,7 +66,7 @@ def eval_POP_NN(env, s_prev, a_prev, v_prev):
     d_out = num_objectives
 
     # TODO: layer size of the NN as argument?
-    model = POP_NN([d_in, 8, 4, d_out])
+    model = POP_NN([d_in, 16, 8, 4, d_out])
     model.load_state_dict(torch.load(f'{path_data}model_{file}.pth'))
     model.eval()
     ret_vector = np.zeros(num_objectives)

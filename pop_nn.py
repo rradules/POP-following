@@ -83,7 +83,7 @@ if __name__ == '__main__':
     d_in = num_objectives + 3
     d_out = num_objectives
     # init NN
-    model = POP_NN([d_in, 8, 4, d_out]).to(device)
+    model = POP_NN([d_in, 16, 8, 4, d_out]).to(device)
     loss_function = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
