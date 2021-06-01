@@ -267,7 +267,7 @@ if __name__ == '__main__':
     returns = rollout(env, s0, a0, v0, pcs, 0.8)
     print(returns)
     acc = np.array([0.0,0.0])
-    times=25
+    times=100
     for x in range(times):
         env.reset()
         env._state = s0
