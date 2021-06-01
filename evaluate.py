@@ -13,7 +13,7 @@ import numpy as np
 import random
 from pop_ls import popf_local_search, popf_iter_local_search, toStavs
 
-# TODO Where is this used??
+
 def select_action(state, pcs, objective_columns, value_vector):
     Q_next = pcs.loc[pcs['State'] == state]
     i_min = np.linalg.norm(Q_next[objective_columns] - value_vector, axis=1).argmin()
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     env = gym.make('RandomMOMDP-v0')
     num_states = env.observation_space.n
     num_actions = env.action_space.n
-    num_objectives = env._nobjectives
+    num_objectives = args.obj
 
     path_data = f'results/'
     file = f'MPD_s{args.states}_a{args.act}_o{args.obj}_ss{args.suc}_seed{args.seed}'
