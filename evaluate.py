@@ -7,13 +7,11 @@ from gym.envs.registration import register
 import json
 import argparse
 import pandas as pd
-from pvi import get_non_dominated
 from pop_nn import POP_NN
 from utils import is_dominated
 import numpy as np
 import random
 from pop_ls import popf_local_search, popf_iter_local_search, toStavs
-import copy
 
 # TODO Where is this used??
 def select_action(state, pcs, objective_columns, value_vector):
@@ -157,8 +155,6 @@ if __name__ == '__main__':
         dom = is_dominated(v0, cand)
 
     print(s0, a0, v0)
-    returns = rollout(env, s0, a0, v0, pcs, gamma)
-    print(returns)
     times = 100
 
     # opt_str = args.optimiser
