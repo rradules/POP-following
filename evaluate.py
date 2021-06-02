@@ -22,6 +22,12 @@ def select_action(state, pcs, objective_columns, value_vector):
     return action
 
 
+def get_value(state, action, pcs, objective_columns, value_vector):
+    Q_next = pcs.loc[(pcs['State'] == state) & (pcs['Action'] == action)]
+    i_min = np.linalg.norm(Q_next[objective_columns] - value_vector, axis=1).argmin()
+    value = Q_next[objective_columns].iloc[i_min].values
+    return value
+
 def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=200, optimiser=popf_local_search):
     # Assuming the state in the environment is indeed state0;
     # the reset needs to happen outside of this function
@@ -83,9 +89,11 @@ def eval_POP_NN(env, s_prev, a_prev, v_prev):
             inputNN = [s_prev / num_states, a_prev / num_actions, s_next / num_states]
             inputNN.extend(N)
             v_next = model.forward(torch.tensor(inputNN, dtype=torch.float32))[0].numpy()
+            v_prev = v_next
+                #get_value(s_prev, a_prev, pcs, objective_columns, v_next)
             a_prev = select_action(s_next, pcs, objective_columns, v_next)
             s_prev = s_next
-            v_prev = v_next
+
 
     #print(v0, ret_vector)
     return ret_vector
@@ -99,7 +107,7 @@ if __name__ == '__main__':
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
     parser.add_argument('-act', type=int, default=2, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
-    parser.add_argument('-seed', type=int, default=1, help="seed")
+    parser.add_argument('-seed', type=int, default=2, help="seed")
     parser.add_argument('-exp_seed', type=int, default=42, help="experiment seed")
     parser.add_argument('-optimiser', type=str, default='ls', help="Optimiser")
 

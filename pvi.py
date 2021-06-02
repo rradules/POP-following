@@ -203,7 +203,7 @@ if __name__ == '__main__':
     reward_function = env._reward_function
 
     gamma = 0.8  # Discount factor
-    epsilon = 0.1  # How close we want to go to the PCS.
+    epsilon = 0.05  # How close we want to go to the PCS.
     decimals = 4
 
     path_data = f'results/'  # /{mooc}/{hp.use_baseline}'

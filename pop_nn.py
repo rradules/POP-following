@@ -40,7 +40,7 @@ if __name__ == '__main__':
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
     parser.add_argument('-act', type=int, default=2, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
-    parser.add_argument('-seed', type=int, default=1, help="seed")
+    parser.add_argument('-seed', type=int, default=2, help="seed")
 
     args = parser.parse_args()
 
@@ -63,21 +63,17 @@ if __name__ == '__main__':
     target = data[data.columns[-num_objectives:]].values
     train = data[data.columns[:-num_objectives]].values
 
-    # 80-20 train - test, 80 - 20 train - val splits
-    X_train, X_test, y_train, y_test = train_test_split(train, target, test_size=0.2)
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2)
+    # 80-20 train - validation
+    X_train, X_val, y_train, y_val = train_test_split(train, target, test_size=0.2)
 
     # Create the data loaders
     train = TensorDataset(torch.tensor(X_train, dtype=torch.float32),
                           torch.tensor(y_train, dtype=torch.float32))  # create your datset
     val = TensorDataset(torch.tensor(X_val, dtype=torch.float32),
                         torch.tensor(y_val, dtype=torch.float32))  # create your datset
-    test = TensorDataset(torch.tensor(X_test, dtype=torch.float32),
-                         torch.tensor(y_test, dtype=torch.float32))  # create your datset
 
     train_loader = DataLoader(train, shuffle=True, batch_size=16)  # create your dataloader
     val_loader = DataLoader(val, shuffle=True, batch_size=16)  # create your dataloader
-    test_loader = DataLoader(test, shuffle=True, batch_size=16)  # create your dataloader
 
     # input output size
     d_in = num_objectives + 3
@@ -89,7 +85,7 @@ if __name__ == '__main__':
 
     n_epochs = 1500
     predict_every = 20
-    min_valid_loss = 1
+    min_valid_loss = 0.5
     for epoch in range(n_epochs):
         for batch_idx, (data, target) in enumerate(train_loader):
             if torch.cuda.is_available():
