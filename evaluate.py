@@ -102,10 +102,10 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-states', type=int, default=10, help="number of states")
+    parser.add_argument('-states', type=int, default=20, help="number of states")
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
-    parser.add_argument('-act', type=int, default=2, help="number of actions")
-    parser.add_argument('-suc', type=int, default=4, help="number of successors")
+    parser.add_argument('-act', type=int, default=3, help="number of actions")
+    parser.add_argument('-suc', type=int, default=7, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
     parser.add_argument('-exp_seed', type=int, default=1, help="experiment seed")
     parser.add_argument('-optimiser', type=str, default='ls', help="Optimiser")

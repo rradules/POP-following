@@ -36,10 +36,10 @@ class POP_NN(nn.Module):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-states', type=int, default=10, help="number of states")
+    parser.add_argument('-states', type=int, default=20, help="number of states")
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
-    parser.add_argument('-act', type=int, default=2, help="number of actions")
-    parser.add_argument('-suc', type=int, default=4, help="number of successors")
+    parser.add_argument('-act', type=int, default=3, help="number of actions")
+    parser.add_argument('-suc', type=int, default=7, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
 
     args = parser.parse_args()
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     num_objectives = args.obj
 
     # Load training data
-    data = pd.read_csv(f'{path_data}NN_{file}.csv')
+    data = pd.read_csv(f'{path_data}ND_NN_{file}.csv')
 
     # Not pretty normalisation for states and actions
     data['s'] = data['s'].values/num_states
@@ -72,8 +72,8 @@ if __name__ == '__main__':
     val = TensorDataset(torch.tensor(X_val, dtype=torch.float32),
                         torch.tensor(y_val, dtype=torch.float32))  # create your datset
 
-    train_loader = DataLoader(train, shuffle=True, batch_size=16)  # create your dataloader
-    val_loader = DataLoader(val, shuffle=True, batch_size=16)  # create your dataloader
+    train_loader = DataLoader(train, shuffle=True, batch_size=32)  # create your dataloader
+    val_loader = DataLoader(val, shuffle=True, batch_size=32)  # create your dataloader
 
     # input output size
     d_in = num_objectives + 3
@@ -83,7 +83,7 @@ if __name__ == '__main__':
     loss_function = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-    n_epochs = 1500
+    n_epochs = 3000
     predict_every = 20
     min_valid_loss = 0.5
     for epoch in range(n_epochs):
