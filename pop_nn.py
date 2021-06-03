@@ -40,7 +40,7 @@ if __name__ == '__main__':
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
     parser.add_argument('-act', type=int, default=2, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
-    parser.add_argument('-seed', type=int, default=2, help="seed")
+    parser.add_argument('-seed', type=int, default=42, help="seed")
 
     args = parser.parse_args()
 
