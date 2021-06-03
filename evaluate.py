@@ -148,7 +148,7 @@ if __name__ == '__main__':
     transition_function = env_info['transition']
     reward_function = env_info['reward']
 
-    pcs = pd.read_csv(f'{path_data}PCS_{file}.csv')
+    pcs = pd.read_csv(f'{path_data}ND_PCS_{file}.csv')
 
     pcs[objective_columns] = pcs[objective_columns].apply(pd.to_numeric)
 
