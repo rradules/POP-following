@@ -151,6 +151,7 @@ if __name__ == '__main__':
     pcs = pd.read_csv(f'{path_data}ND_PCS_{file}.csv')
 
     pcs[objective_columns] = pcs[objective_columns].apply(pd.to_numeric)
+    pcs[['Action', 'State']] = pcs[['Action', 'State']].astype('int32')
 
     s0 = env.reset()
     dom = True
@@ -171,7 +172,7 @@ if __name__ == '__main__':
     # 'ls', 'mls', 'ils', 'nn'
     # opt_str = 'nn'
     results = []
-    opt_str = 'ls'
+    opt_str = 'nn'
     lsreps = 10
 
     if opt_str == 'nn':
