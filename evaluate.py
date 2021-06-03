@@ -102,10 +102,10 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-states', type=int, default=20, help="number of states")
+    parser.add_argument('-states', type=int, default=10, help="number of states")
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
-    parser.add_argument('-act', type=int, default=3, help="number of actions")
-    parser.add_argument('-suc', type=int, default=7, help="number of successors")
+    parser.add_argument('-act', type=int, default=2, help="number of actions")
+    parser.add_argument('-suc', type=int, default=4, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
     parser.add_argument('-exp_seed', type=int, default=2, help="experiment seed")
     parser.add_argument('-optimiser', type=str, default='ls', help="Optimiser")
@@ -175,52 +175,53 @@ if __name__ == '__main__':
     opt_str = 'nn'
     lsreps = 10
 
-    if opt_str == 'nn':
-        acc = np.array([0.0, 0.0])
-        for x in range(times):
-            start = time.time()
-            env.reset()
-            env._state = s0
-            returns = eval_POP_NN(env, s0, a0, v0)
-            # print(f'{x+1}: {returns}', flush=True)
-            end = time.time()
-            elapsed_seconds = (end - start)
-            acc = acc + returns
-            results.append(np.append(returns, [x, elapsed_seconds]))
+    for opt_str in ['nn', 'ls', 'mls', 'ils']:
+        if opt_str == 'nn':
+            acc = np.array([0.0, 0.0])
+            for x in range(times):
+                start = time.time()
+                env.reset()
+                env._state = s0
+                returns = eval_POP_NN(env, s0, a0, v0)
+                # print(f'{x+1}: {returns}', flush=True)
+                end = time.time()
+                elapsed_seconds = (end - start)
+                acc = acc + returns
+                results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
 
-        av = acc / times
-        l = np.linalg.norm(v0 - av)
-        print(f'NN: {l}, vec={av}')
+            av = acc / times
+            l = np.linalg.norm(v0 - av)
+            print(f'NN: {l}, vec={av}')
 
-    else:
-        if opt_str == 'ls':
-            optimiser = popf_local_search
-        elif opt_str == 'mls':
-            func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=1)
-            optimiser = func
-        elif opt_str == 'ils':
-            func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=0.3)
-            optimiser = func
+        else:
+            if opt_str == 'ls':
+                optimiser = popf_local_search
+            elif opt_str == 'mls':
+                func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=1)
+                optimiser = func
+            elif opt_str == 'ils':
+                func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=0.3)
+                optimiser = func
 
-        acc = np.array([0.0, 0.0])
-        for x in range(times):
-            start = time.time()
-            env.reset()
-            env._state = s0
-            returns = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
-            #print(f'{x+1}: {returns}', flush=True)
-            end = time.time()
-            elapsed_seconds = (end - start)
-            acc = acc + returns
-            results.append(np.append(returns, [x, elapsed_seconds]))
+            acc = np.array([0.0, 0.0])
+            for x in range(times):
+                start = time.time()
+                env.reset()
+                env._state = s0
+                returns = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
+                #print(f'{x+1}: {returns}', flush=True)
+                end = time.time()
+                elapsed_seconds = (end - start)
+                acc = acc + returns
+                results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
 
-        av = acc/times
-        l = np.linalg.norm(v0 - av)
-        print(f'{opt_str}: {l}, vec={av}')
+            av = acc/times
+            l = np.linalg.norm(v0 - av)
+            print(f'{opt_str}: {l}, vec={av}')
 
-    final_result = {'method': opt_str, 'v0': v0.tolist()}
-    json.dump(final_result, open(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}.json', "w"))
-    columns = ['Value0', 'Value1', 'Rollout', 'Runtime']
+        final_result = {'method': opt_str, 'v0': v0.tolist()}
+        json.dump(final_result, open(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}.json', "w"))
+    columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method']
     df = pd.DataFrame(results, columns=columns)
     df.to_csv(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}.csv', index=False)
 
