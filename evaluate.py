@@ -107,7 +107,7 @@ if __name__ == '__main__':
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
     parser.add_argument('-act', type=int, default=2, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
-    parser.add_argument('-seed', type=int, default=2, help="seed")
+    parser.add_argument('-seed', type=int, default=42, help="seed")
     parser.add_argument('-exp_seed', type=int, default=42, help="experiment seed")
     parser.add_argument('-optimiser', type=str, default='ls', help="Optimiser")
 
@@ -170,7 +170,8 @@ if __name__ == '__main__':
 
     # opt_str = args.optimiser
     # 'ls', 'mls', 'ils', 'nn'
-    opt_str = 'nn'
+    opt_str = 'ls'
+    lsreps = 10
 
     if opt_str == 'nn':
         acc = np.array([0.0, 0.0])
@@ -189,9 +190,10 @@ if __name__ == '__main__':
         if opt_str == 'ls':
             optimiser = popf_local_search
         elif opt_str == 'mls':
-            optimiser = popf_iter_local_search
+            func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=1)
+            optimiser = func
         elif opt_str == 'ils':
-            func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=10, pertrub_p=0.3)
+            func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=0.3)
             optimiser = func
 
         acc = np.array([0.0, 0.0])
