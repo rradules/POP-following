@@ -171,6 +171,8 @@ if __name__ == '__main__':
     # 'ls', 'mls', 'ils', 'nn'
     # opt_str = 'nn'
     results = []
+    opt_str = 'ls'
+    lsreps = 10
 
     if opt_str == 'nn':
         acc = np.array([0.0, 0.0])
@@ -193,9 +195,10 @@ if __name__ == '__main__':
         if opt_str == 'ls':
             optimiser = popf_local_search
         elif opt_str == 'mls':
-            optimiser = popf_iter_local_search
+            func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=1)
+            optimiser = func
         elif opt_str == 'ils':
-            func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=10, pertrub_p=0.3)
+            func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=0.3)
             optimiser = func
 
         acc = np.array([0.0, 0.0])
