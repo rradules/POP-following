@@ -1,8 +1,5 @@
 import gym
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils.data import TensorDataset, DataLoader
 from gym.envs.registration import register
 import json
 import argparse
@@ -11,6 +8,7 @@ from pop_nn import POP_NN
 from utils import is_dominated
 import numpy as np
 import random
+import time
 from pop_ls import popf_local_search, popf_iter_local_search, toStavs
 
 
@@ -27,6 +25,7 @@ def get_value(state, action, pcs, objective_columns, value_vector):
     i_min = np.linalg.norm(Q_next[objective_columns] - value_vector, axis=1).argmin()
     value = Q_next[objective_columns].iloc[i_min].values
     return value
+
 
 def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=200, optimiser=popf_local_search):
     # Assuming the state in the environment is indeed state0;
@@ -90,7 +89,7 @@ def eval_POP_NN(env, s_prev, a_prev, v_prev):
             inputNN.extend(N)
             v_next = model.forward(torch.tensor(inputNN, dtype=torch.float32))[0].numpy()
             v_prev = v_next
-                #get_value(s_prev, a_prev, pcs, objective_columns, v_next)
+                # v_next get_value(s_prev, a_prev, pcs, objective_columns, v_next)
             a_prev = select_action(s_next, pcs, objective_columns, v_next)
             s_prev = s_next
 
@@ -107,8 +106,8 @@ if __name__ == '__main__':
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
     parser.add_argument('-act', type=int, default=2, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
-    parser.add_argument('-seed', type=int, default=2, help="seed")
-    parser.add_argument('-exp_seed', type=int, default=42, help="experiment seed")
+    parser.add_argument('-seed', type=int, default=42, help="seed")
+    parser.add_argument('-exp_seed', type=int, default=1, help="experiment seed")
     parser.add_argument('-optimiser', type=str, default='ls', help="Optimiser")
 
     args = parser.parse_args()
@@ -168,18 +167,23 @@ if __name__ == '__main__':
     print(s0, a0, v0)
     times = 200
 
-    # opt_str = args.optimiser
+    opt_str = args.optimiser
     # 'ls', 'mls', 'ils', 'nn'
-    opt_str = 'nn'
+    # opt_str = 'nn'
+    results = []
 
     if opt_str == 'nn':
         acc = np.array([0.0, 0.0])
         for x in range(times):
+            start = time.time()
             env.reset()
             env._state = s0
             returns = eval_POP_NN(env, s0, a0, v0)
             # print(f'{x+1}: {returns}', flush=True)
+            end = time.time()
+            elapsed_seconds = (end - start)
             acc = acc + returns
+            results.append(np.append(returns, [x, elapsed_seconds]))
 
         av = acc / times
         l = np.linalg.norm(v0 - av)
@@ -196,15 +200,26 @@ if __name__ == '__main__':
 
         acc = np.array([0.0, 0.0])
         for x in range(times):
+            start = time.time()
             env.reset()
             env._state = s0
             returns = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
             #print(f'{x+1}: {returns}', flush=True)
+            end = time.time()
+            elapsed_seconds = (end - start)
             acc = acc + returns
+            results.append(np.append(returns, [x, elapsed_seconds]))
 
         av = acc/times
         l = np.linalg.norm(v0 - av)
         print(f'{opt_str}: {l}, vec={av}')
+
+    final_result = {'method': opt_str, 'v0': v0.tolist()}
+    json.dump(final_result, open(f'{path_data}results_{opt_str}_{file}.json', "w"))
+    columns = ['Value0', 'Value1', 'Rollout', 'Runtime']
+    df = pd.DataFrame(results, columns=columns)
+    df.to_csv(f'{path_data}results_{opt_str}_{file}.csv', index=False)
+
 
 
 
