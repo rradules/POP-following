@@ -17,6 +17,7 @@ def get_non_dominated(candidates):
     This function returns the non-dominated subset of elements.
     :param candidates: The input set of candidate vectors.
     :return: The non-dominated subset of this input set.
+    Source: https://stackoverflow.com/questions/32791911/fast-calculation-of-pareto-front-in-python
     """
     candidates = np.array(list(candidates))
     #print(candidates)

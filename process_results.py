@@ -34,19 +34,38 @@ if __name__ == '__main__':
     path_plots = f'plots/'
     mkdir_p(path_plots)
     file = f'MPD_s{args.states}_a{args.act}_o{args.obj}_ss{args.suc}_seed{args.seed}_exp{args.exp_seed}'
+    opt = 'ils'
 
     with open(f'{path_data}results_{args.optimiser}_{file}.json', "r") as read_file:
         info = json.load(read_file)
-    print(info)
+    v0 = info['v0']
+    results = pd.read_csv(f'{path_data}results_{opt}_{file}.csv')
 
-    results = pd.read_csv(f'{path_data}results_{args.optimiser}_{file}.csv')
 
-    ax = sns.barplot(y='Runtime', data=results, ci='sd', label='NN')
+
+    #results['epsilon0'] = v0[0] - results.Value0
+    #results['epsilon0'] = results['epsilon0'].apply(lambda x: max(0, x))
+
+    #results['epsilon1'] = v0[1] - results.Value1
+    #results['epsilon1'] = results['epsilon1'].apply(lambda x: max(0, x))
+
+    for opt_str in ['nn', 'ls', 'mls', 'ils']:
+        val_mean = results[['Value0', 'Value1']].loc[results['Method'] == opt_str].mean(axis=0).values
+        val_diff = v0 - val_mean
+        #nn_mean = results[['epsilon0', 'epsilon1']].loc[results['Method'] == opt_str]
+        print(opt_str, val_diff)
+
+
+
+    '''
+    ax = sns.barplot(x='Method', y='Runtime', data=results, ci='sd')
     ax.set(ylabel='Average runtime (s)')
-    plot_name = f"{path_plots}/{args.optimiser}_runtime"
+    plot_name = f"{path_plots}/{file}_runtime"
     # plt.title(f"Action probabilities - Agent 2")
     plt.savefig(plot_name + ".pdf")
 
     plt.clf()
+    '''
+
 
 
