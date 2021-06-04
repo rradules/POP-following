@@ -26,12 +26,7 @@ def get_value(state, action, pcs, objective_columns, value_vector):
     value = Q_next[objective_columns].iloc[i_min].values
     return value
 
-<<<<<<< HEAD
-def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=40, optimiser=popf_local_search):
-=======
-
 def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=200, optimiser=popf_local_search):
->>>>>>> 4efd15b7acb5f13904725328833a7e6e94310f0a
     # Assuming the state in the environment is indeed state0;
     # the reset needs to happen outside of this function
     time = 0
@@ -153,9 +148,10 @@ if __name__ == '__main__':
     transition_function = env_info['transition']
     reward_function = env_info['reward']
 
-    pcs = pd.read_csv(f'{path_data}PCS_{file}.csv')
+    pcs = pd.read_csv(f'{path_data}ND_PCS_{file}.csv')
 
     pcs[objective_columns] = pcs[objective_columns].apply(pd.to_numeric)
+    pcs[['Action', 'State']] = pcs[['Action', 'State']].astype('int32')
 
     s0 = env.reset()
     dom = True
@@ -176,58 +172,58 @@ if __name__ == '__main__':
     # 'ls', 'mls', 'ils', 'nn'
     # opt_str = 'nn'
     results = []
-    opt_str = 'ls'
+    opt_str = 'nn'
     lsreps = 10
 
-    if opt_str == 'nn':
-        acc = np.array([0.0, 0.0])
-        for x in range(times):
-            start = time.time()
-            env.reset()
-            env._state = s0
-            returns = eval_POP_NN(env, s0, a0, v0)
-            # print(f'{x+1}: {returns}', flush=True)
-            end = time.time()
-            elapsed_seconds = (end - start)
-            acc = acc + returns
-            results.append(np.append(returns, [x, elapsed_seconds]))
+    for opt_str in ['nn', 'ls', 'mls', 'ils']:
+        if opt_str == 'nn':
+            acc = np.array([0.0, 0.0])
+            for x in range(times):
+                start = time.time()
+                env.reset()
+                env._state = s0
+                returns = eval_POP_NN(env, s0, a0, v0)
+                # print(f'{x+1}: {returns}', flush=True)
+                end = time.time()
+                elapsed_seconds = (end - start)
+                acc = acc + returns
+                results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
 
-        av = acc / times
-        l = np.linalg.norm(v0 - av)
-        print(f'NN: {l}, vec={av}')
+            av = acc / times
+            l = np.linalg.norm(v0 - av)
+            print(f'NN: {l}, vec={av}')
 
-    else:
-        if opt_str == 'ls':
-            optimiser = popf_local_search
-        elif opt_str == 'mls':
-            func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=1)
-            optimiser = func
-        elif opt_str == 'ils':
-            func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=0.3)
-            optimiser = func
+        else:
+            if opt_str == 'ls':
+                optimiser = popf_local_search
+            elif opt_str == 'mls':
+                func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=1)
+                optimiser = func
+            elif opt_str == 'ils':
+                func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=0.3)
+                optimiser = func
 
-        acc = np.array([0.0, 0.0])
-        print()
-        for x in range(times):
-            start = time.time()
-            env.reset()
-            env._state = s0
-            returns = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
-            #print(f'{x+1}: {returns}', flush=True)
-            end = time.time()
-            elapsed_seconds = (end - start)
-            acc = acc + returns
-            results.append(np.append(returns, [x, elapsed_seconds]))
+            acc = np.array([0.0, 0.0])
+            for x in range(times):
+                start = time.time()
+                env.reset()
+                env._state = s0
+                returns = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
+                #print(f'{x+1}: {returns}', flush=True)
+                end = time.time()
+                elapsed_seconds = (end - start)
+                acc = acc + returns
+                results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
 
-        av = acc/times
-        l = np.linalg.norm(v0 - av)
-        print(f'{opt_str}: {l}, vec={av}')
+            av = acc/times
+            l = np.linalg.norm(v0 - av)
+            print(f'{opt_str}: {l}, vec={av}')
 
-    final_result = {'method': opt_str, 'v0': v0.tolist()}
-    json.dump(final_result, open(f'{path_data}results_{opt_str}_{file}.json', "w"))
-    columns = ['Value0', 'Value1', 'Rollout', 'Runtime']
-    df = pd.DataFrame(results, columns=columns)
-    df.to_csv(f'{path_data}results_{opt_str}_{file}.csv', index=False)
+        final_result = {'method': opt_str, 'v0': v0.tolist()}
+        json.dump(final_result, open(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}.json', "w"))
+        columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method']
+        df = pd.DataFrame(results, columns=columns)
+        df.to_csv(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}.csv', index=False)
 
 
 
