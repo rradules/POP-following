@@ -108,8 +108,8 @@ if __name__ == '__main__':
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
     parser.add_argument('-exp_seed', type=int, default=1, help="experiment seed")
-    parser.add_argument('-optimiser', type=str, default='ils', help="Optimiser")
-    parser.add_argument('-reps', type=int, default=5, help="Reps")
+    parser.add_argument('-optimiser', type=str, default='nn', help="Optimiser")
+    parser.add_argument('-reps', type=int, default=10, help="Reps")
 
     args = parser.parse_args()
 
@@ -191,8 +191,9 @@ if __name__ == '__main__':
             results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
 
         av = acc / times
+        diff = v0 - av
         l = np.linalg.norm(v0 - av)
-        print(f'NN: {l}, vec={av}')
+        print(f'{opt_str}: {l}, {diff}, vec={av}')
 
     else:
         if opt_str == 'ls':
@@ -217,8 +218,9 @@ if __name__ == '__main__':
             results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
 
         av = acc/times
+        diff = v0 - av
         l = np.linalg.norm(v0 - av)
-        print(f'{opt_str}: {l}, vec={av}')
+        print(f'{opt_str}: {l}, {diff}, vec={av}')
 
     final_result = {'method': opt_str, 'v0': v0.tolist()}
     json.dump(final_result, open(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}_reps{args.reps}.json', "w"))

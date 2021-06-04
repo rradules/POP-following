@@ -1,0 +1,11 @@
+Method,Repetitions,epsilon
+mls,10,0.0
+ils,10,0.0
+mls,5,0.0
+ils,5,0.09309684551738062
+mls,15,0.0
+mls,20,0.0
+mls,25,0.0
+ils,15,0.0
+ils,20,0.0
+ils,25,0.0
