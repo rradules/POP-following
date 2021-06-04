@@ -11,7 +11,7 @@ class Stav:
         self.tvector = self.prob * vector if vector is not None else None
         self.pcs_table = (pcs.loc[pcs['State'] == state])  # hacky, should be an argument
         self.pcs_list = self.precompute_tuples()
-        self.pprune_tuples()
+        #self.pprune_tuples()
         self.pick_random()
 
     def __str__(self):

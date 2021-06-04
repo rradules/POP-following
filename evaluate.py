@@ -26,7 +26,6 @@ def get_value(state, action, pcs, objective_columns, value_vector):
     value = Q_next[objective_columns].iloc[i_min].values
     return value
 
-
 def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=200, optimiser=popf_local_search):
     # Assuming the state in the environment is indeed state0;
     # the reset needs to happen outside of this function
@@ -56,6 +55,7 @@ def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=200, optimi
             next_probs = transition_function[state][action] # hacky, should be an argument
             problem = toStavs(next_probs, pcs)
             nm1, nm2, action, value_vector = optimiser(problem, n_vector, next_state)
+            print('.',end='', flush=True)
         
         state = next_state
         stop = done
@@ -167,7 +167,7 @@ if __name__ == '__main__':
         dom = is_dominated(v0, cand)
 
     print(s0, a0, v0)
-    times = 200
+    times = 50
 
     opt_str = args.optimiser
     # 'ls', 'mls', 'ils', 'nn'
