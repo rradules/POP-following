@@ -224,7 +224,7 @@ if __name__ == '__main__':
     json.dump(final_result, open(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}_reps{args.reps}.json', "w"))
     columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method']
     df = pd.DataFrame(results, columns=columns)
-    df.to_csv(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}.csv', index=False)
+    df.to_csv(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
 
 
 
