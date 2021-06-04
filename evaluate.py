@@ -55,7 +55,7 @@ def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=200, optimi
             next_probs = transition_function[state][action] # hacky, should be an argument
             problem = toStavs(next_probs, pcs)
             nm1, nm2, action, value_vector = optimiser(problem, n_vector, next_state)
-            print('.',end='', flush=True)
+            #print('.',end='', flush=True)
         
         state = next_state
         stop = done
