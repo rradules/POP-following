@@ -107,7 +107,7 @@ if __name__ == '__main__':
     parser.add_argument('-act', type=int, default=2, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
-    parser.add_argument('-exp_seed', type=int, default=2, help="experiment seed")
+    parser.add_argument('-exp_seed', type=int, default=1, help="experiment seed")
     parser.add_argument('-optimiser', type=str, default='ls', help="Optimiser")
 
     args = parser.parse_args()
@@ -221,9 +221,9 @@ if __name__ == '__main__':
 
         final_result = {'method': opt_str, 'v0': v0.tolist()}
         json.dump(final_result, open(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}.json', "w"))
-    columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method']
-    df = pd.DataFrame(results, columns=columns)
-    df.to_csv(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}.csv', index=False)
+        columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method']
+        df = pd.DataFrame(results, columns=columns)
+        df.to_csv(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}.csv', index=False)
 
 
 
