@@ -167,7 +167,7 @@ if __name__ == '__main__':
         dom = is_dominated(v0, cand)
 
     print(s0, a0, v0)
-    times = 50
+    times = 200
 
     opt_str = args.optimiser
     # 'ls', 'mls', 'ils', 'nn'
@@ -221,7 +221,7 @@ if __name__ == '__main__':
         print(f'{opt_str}: {l}, vec={av}')
 
     final_result = {'method': opt_str, 'v0': v0.tolist()}
-    json.dump(final_result, open(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}_resp{args.reps}.json', "w"))
+    json.dump(final_result, open(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}_reps{args.reps}.json', "w"))
     columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method']
     df = pd.DataFrame(results, columns=columns)
     df.to_csv(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}.csv', index=False)
