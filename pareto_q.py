@@ -8,6 +8,9 @@ import pickle
 #plt.switch_backend('agg')
 import datetime
 import cv2
+import gym
+
+from gym.envs.registration import register
 
 
 Log = namedtuple('Log', ['total_steps', 'episode', 'episode_step', 'reward'])
@@ -94,7 +97,7 @@ class ParetoQ(Agent):
             nd_sa = self.non_dominated[s][a]
             rew = self.avg_r[s, a]
             q_set.append([rew + self.gamma*nd for nd in nd_sa])
-        return np.array(q_set)
+        return np.array(q_set, dtype=object)
 
     def update_non_dominated(self, s, a, s_n):
         q_set_n = self.compute_q_set(s_n)
@@ -200,9 +203,12 @@ def action_selection(state, q_set, epsilon, ref):
 
 
 if __name__ == '__main__':
-    import gym
-    import deep_sea_treasure
-    from gym import wrappers
+
+
+    register(
+        id='deep-sea-treasure-v0',
+        entry_point='deep_sea_treasure:DeepSeaTreasureEnv',
+    )
 
     env = gym.make('deep-sea-treasure-v0')
     ref_point = np.array([0, -25])

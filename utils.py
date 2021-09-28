@@ -1,6 +1,8 @@
 import errno
 import os
 import numpy as np
+import pandas as pd
+import math
 
 
 def mkdir_p(path):
@@ -11,6 +13,7 @@ def mkdir_p(path):
             pass
         else:
             raise
+
 
 def get_non_dominated(candidates):
     """
@@ -40,6 +43,7 @@ def get_non_dominated(candidates):
     #print('non-dom', candidates)
     return candidates
 
+
 def is_dominated(candidate, vectors):
     """
     This function checks if a candidate vector is dominated by another vector in the set.
@@ -57,3 +61,45 @@ def is_dominated(candidate, vectors):
                 if dominated.all():
                     return True
         return False
+
+
+def save_vectors(nd_vectors, file, path_data, num_objectives):
+    """
+    This function will save the generated pareto coverage set to a CSV file.
+    :param nd_vectors: A set of non-dominated vectors per state.
+    :param file: file name.
+    :param path_data: directory path for saving the file.
+    :param num_objectives: number of objectives.
+    :return: /
+    """
+
+    columns = [f'Objective {i}' for i in range(num_objectives)]
+    columns = ['State', 'Action'] + columns
+    results = []
+    for state, actions in enumerate(nd_vectors):
+        for action, vectors in enumerate(actions):
+            for vector in vectors:
+                row = [state, action] + list(vector)
+                results.append(row)
+    df = pd.DataFrame(results, columns=columns)
+    df.to_csv(f'{path_data}PCS_{file}.csv', index=False)
+
+
+def check_converged(new_nd_vectors, old_nd_vectors, epsilon):
+    """
+    This function checks if the PCS has converged.
+    :param new_nd_vectors: The updated PCS.
+    :param old_nd_vectors: The old PCS.
+    :param epsilon: Distance to PCS.
+    :return: Boolean whether the PCS has converged.
+    """
+    for state in range(len(new_nd_vectors)):
+        for new_set, old_set in zip(new_nd_vectors[state], old_nd_vectors[state]):
+            min_epsilon = math.inf  # Initial value is positive infinity because we need the minimum.
+            for new_vec in new_set:
+                for old_vec in old_set:
+                    diff = np.asarray(new_vec) - np.asarray(old_vec)
+                    min_epsilon = min(min_epsilon, np.max(diff))  # We need the max difference.
+                if min_epsilon > epsilon:  # Early stop if the minimum epsilon for a vector is already above the threshold.
+                    return False
+    return True

@@ -91,6 +91,7 @@ class DeepSeaTreasureEnv(discrete.DiscreteEnv):
         else:
             reward = [0, -1]
             done = False
+        #TODO: make env stochastic
         return [(1., new_state, np.array(reward), done)]
 
     def render(self, mode='rgb_array'):
