@@ -3,6 +3,7 @@ import datetime
 import pickle
 import gym
 import cv2
+import utils
 
 import numpy as np
 import tensorboardX as tb
@@ -208,19 +209,15 @@ def action_selection(state, q_set, epsilon, ref):
         return np.random.choice(range(q_set.shape[0]))
 
 
-def write_results(non_dominated):
-    return 0
-
-
 if __name__ == '__main__':
     gym.register(
         id='DeepSeaTreasure-v0',
-        entry_point='deep_sea_treasure:DeepSeaTreasureEnv'
-    )
+        entry_point='deep_sea_treasure:DeepSeaTreasureEnv')
 
     env = gym.make('DeepSeaTreasure-v0')
     ref_point = np.array([0, -25])
-    agent = ParetoQ(env, lambda s, q, e: action_selection(s, q, e, ref_point), ref_point, nO=2, gamma=1.)
+    num_objectives = 2
+    agent = ParetoQ(env, lambda s, q, e: action_selection(s, q, e, ref_point), ref_point, nO=num_objectives, gamma=1.)
 
     # env = gym.make('resource-gathering-v0')
     # ref_point = np.array([-1, -1, -2])
@@ -228,8 +225,6 @@ if __name__ == '__main__':
 
     logdir = 'runs/pareto-q/'
     agent.train(10, logdir=logdir)
-    print("HOI")
-    print(agent.non_dominated[0])
-    print(agent.non_dominated[1])
-    print("PIEPELOI")
-    print(agent.non_dominated)
+    path_data = f'results/'
+    file = f'MPD_s{env.nS}_a{env.nA}_o{num_objectives}_ss{env.nS}_seed{-1}'
+    utils.save_vectors(agent.non_dominated, file, path_data, num_objectives)
