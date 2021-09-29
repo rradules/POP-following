@@ -1,14 +1,16 @@
-from collections import namedtuple
-from collections.abc import Iterable
-import numpy as np
-from pygmo import hypervolume
-import tensorboardX as tb
-import matplotlib.pyplot as plt
-import pickle
-#plt.switch_backend('agg')
+import argparse
 import datetime
+import pickle
+import gym
 import cv2
 
+import numpy as np
+import tensorboardX as tb
+import matplotlib.pyplot as plt
+
+from collections import namedtuple
+from collections.abc import Iterable
+from pygmo import hypervolume
 
 Log = namedtuple('Log', ['total_steps', 'episode', 'episode_step', 'reward'])
 
@@ -34,7 +36,7 @@ class Agent(object):
         record_every = 50
 
         total_steps = 0
-        for e_i in range(1, episodes+1):
+        for e_i in range(1, episodes + 1):
             e_step = 0
             e_reward = 0
             res = self.start(log=Log(total_steps, e_i, e_step, e_reward))
@@ -81,6 +83,7 @@ class ParetoQ(Agent):
         self.non_dominated = [[[np.zeros(nO)] for _ in range(env.nA)] for _ in range(env.nS)]
         self.avg_r = np.zeros((env.nS, env.nA, nO))
         self.n_visits = np.zeros((env.nS, env.nA))
+        self.transitions = np.zeros((env.nS, env.nA, env.nS))
 
     def start(self, log=None):
         self.epsilon = 1.
@@ -93,8 +96,8 @@ class ParetoQ(Agent):
         for a in range(self.env.nA):
             nd_sa = self.non_dominated[s][a]
             rew = self.avg_r[s, a]
-            q_set.append([rew + self.gamma*nd for nd in nd_sa])
-        return np.array(q_set)
+            q_set.append([rew + self.gamma * nd for nd in nd_sa])
+        return np.array(q_set, dtype=object)
 
     def update_non_dominated(self, s, a, s_n):
         q_set_n = self.compute_q_set(s_n)
@@ -113,8 +116,14 @@ class ParetoQ(Agent):
         next_state, reward, terminal, _ = self.env.step(action)
         # update non-dominated set
         self.update_non_dominated(state, action, next_state)
-        # update avg immediate reward
+        # Calculate total transitions
+        total_transitions = self.transitions[state, action] * self.n_visits[state, action]
+        total_transitions[next_state] += 1
+        # Update visit count
         self.n_visits[state, action] += 1
+        # Update transition function
+        self.transitions[state, action] = total_transitions / self.n_visits[state, action]
+        # update avg immediate reward
         self.avg_r[state, action] += (reward - self.avg_r[state, action]) / self.n_visits[state, action]
 
         self.epsilon *= 0.997
@@ -158,7 +167,7 @@ class ParetoQ(Agent):
         print([np.array(qi[a]) for a in range(4)])
         while not done:
             q = self.compute_q_set(state)
-            q_s = [np.amax(np.sum(q[a]*w/norm, axis=1)) for a in range(self.env.nA)]
+            q_s = [np.amax(np.sum(q[a] * w / norm, axis=1)) for a in range(self.env.nA)]
             action = np.random.choice(np.argwhere(q_s == np.amax(q_s)).flatten())
             print(q_s, action)
             state, reward, done, _ = self.env.step(action)
@@ -186,7 +195,7 @@ def compute_hypervolume(q_set, nA, ref):
         points = np.array(q_set[i]) * -1.
         hv = hypervolume(points)
         # use negative ref-point for minimization
-        q_values[i] = hv.compute(ref*-1)
+        q_values[i] = hv.compute(ref * -1)
     return q_values
 
 
@@ -199,22 +208,28 @@ def action_selection(state, q_set, epsilon, ref):
         return np.random.choice(range(q_set.shape[0]))
 
 
-if __name__ == '__main__':
-    import gym
-    import deep_sea_treasure
-    from gym import wrappers
+def write_results(non_dominated):
+    return 0
 
-    env = gym.make('deep-sea-treasure-v0')
+
+if __name__ == '__main__':
+    gym.register(
+        id='DeepSeaTreasure-v0',
+        entry_point='deep_sea_treasure:DeepSeaTreasureEnv'
+    )
+
+    env = gym.make('DeepSeaTreasure-v0')
     ref_point = np.array([0, -25])
-    agent = ParetoQ(env, lambda s, q, e: action_selection(s, q, e,  ref_point), ref_point, nO=2, gamma=1.)
+    agent = ParetoQ(env, lambda s, q, e: action_selection(s, q, e, ref_point), ref_point, nO=2, gamma=1.)
 
     # env = gym.make('resource-gathering-v0')
     # ref_point = np.array([-1, -1, -2])
     # agent = ParetoQ(env, lambda s, q, e: action_selection(s, q, e, ref_point), ref_point, nO=3, gamma=0.96)
 
     logdir = 'runs/pareto-q/'
-    agent.train(4000, logdir=logdir)
+    agent.train(10, logdir=logdir)
+    print("HOI")
     print(agent.non_dominated[0])
-
-    import pickle
-    pickle.dump(agent.non_dominated, open('dst-pareto.pkl', 'rb'))
+    print(agent.non_dominated[1])
+    print("PIEPELOI")
+    print(agent.non_dominated)
