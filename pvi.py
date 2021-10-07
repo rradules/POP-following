@@ -2,11 +2,13 @@ import argparse
 import json
 import time
 import copy
+import itertools
 import gym
 
 import pandas as pd
 import numpy as np
 
+from collections import namedtuple
 from utils import mkdir_p, get_non_dominated, save_vectors, check_converged
 
 from gym.envs.registration import register
@@ -34,79 +36,70 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8):
     start = time.time()
     nd_vectors = [[{tuple(np.zeros(num_objectives))} for _ in range(num_actions)] for _ in range(num_states)]  # Q-set
     nd_vectors_update = copy.deepcopy(nd_vectors)
-    nn_dataset = {}
-
+    dataset = []
     run = 0  # For printing purposes.
 
     while True:  # We execute the algorithm until convergence.
         print(f'Value Iteration number: {run}')
-        for state in range(num_states):  # Loop over all states.
-            dict_v = {}
-            dict_c = {}
-            dict_cand = {}
-            dict_future = {}
 
+        for state in range(num_states):  # Loop over all states.
             for action in range(num_actions):  # Loop over all actions possible in this state.
                 candidate_vectors = set()  # A set of new candidate non-dominated vectors for this state action.
-                reward = reward_function[state, action]  # Get the reward from taking the action in the state.
-                future_rewards = {tuple(np.zeros(num_objectives))}  # The vectors that can be obtained in next states.
                 next_states = np.where(transition_function[state, action, :] > 0)[0]  # Next states with prob > 0
+                lv = []  # An empty list that will hold a list of vectors for each next state.
 
-                for next_state in next_states:  # Loop over the next states
-                    transition_prob = transition_function[state, action, next_state]  # Probability of this transition.
-                    new_future_rewards = set()  # Empty set that will hold the updated future rewards
-                    for next_action in range(num_actions):
-                        next_state_action_nd_vectors = nd_vectors[next_state][next_action]  # Non dominated vectors from the next state.
+                for next_state in next_states:  # Loop over all states.
+                    # We take the union of all state-action non dominated vectors.
+                    # We then only keep the non dominated vectors.
+                    # We cast the resulting set to a list for later processing.
+                    lv.append(list(get_non_dominated(set().union(*[nd_vectors[next_state][a] for a in range(num_actions)]))))
 
-                        for curr_vec in future_rewards:  # Current set of future rewards.
-                            for nd_vec in next_state_action_nd_vectors:  # Loop over the non-dominated vectors inn this next state.
-                                future_reward = np.array(curr_vec) + transition_prob * np.array(nd_vec)
-                                future_reward = tuple(np.around(future_reward, decimals=decimals))
-                                new_future_rewards.add(future_reward)
-                                dict_future[future_reward] = [nd_vec, state, action, next_state]
+                # This cartesian product will contain tuples with a reward vector for each next state.
+                cartesian_product = itertools.product(*lv)
 
-                    future_rewards = get_non_dominated(new_future_rewards)  # Update the future rewards with the updated set.
-                    dict_future_update = {tuple(rew): dict_future[tuple(rew)] for rew in future_rewards}
-                    dict_v.update(dict_future_update)
-                    assert (len(future_rewards) == len(dict_future_update))
+                for next_vectors in cartesian_product:  # Loop over these tuples containing next vectors.
+                    future_reward = np.zeros(num_objectives)  # The future reward associated with these next vectors.
+                    N = np.zeros(num_objectives)  # The component of V from value vectors for the next state.
 
-                for future_reward in future_rewards:
-                    value_vector = tuple(reward + gamma * np.array(future_reward)) # Calculate estimate of the value vector.
-                    value_vector = tuple(np.around(value_vector, decimals=decimals))
-                    candidate_vectors.add(value_vector)
+                    for idx, next_state in enumerate(next_states):
+                        transition_prob = transition_function[state, action, next_state]  # The transition probability.
+                        reward = reward_function[state, action, next_state]  # The reward associated with this.
+                        disc_future_reward = gamma * next_vectors[idx]  # The discounted future reward.
+                        contribution = transition_prob * (reward + disc_future_reward)  # The contribution of this vector.
+                        future_reward += contribution  # Add it to the future reward.
+                        N += disc_future_reward  # Add the component of V from next value vectors to N
 
-                    dict_cand[value_vector] = [future_reward, reward]
+                    future_reward = tuple(np.around(future_reward, decimals=decimals))  # Round the future reward.
+                    N = tuple(np.around(N, decimals=decimals))  # Round N.
 
-                nd_vectors_update[state][action] = candidate_vectors  # Update the non-dominated set.
-                dict_cand_update = {tuple(val): dict_cand[tuple(val)] for val in nd_vectors_update[state][action]}
-                dict_c.update(dict_cand_update)
-                assert(len(nd_vectors_update[state][action]) == len(dict_cand_update))
-                # here we can filter dict_v again if it gets too slow
-                nn_dataset[state] = [dict_v, dict_c]
+                    for idx, next_state in enumerate(next_states):  # Add the generated vectors to the dataset.
+                        follow_vec = next_vectors[idx]
+                        data = Data(follow_vec, N, state, action, next_state)
+                        dataset.append(data)
 
-        if check_converged(nd_vectors_update, nd_vectors, epsilon):
+                    candidate_vectors.add(future_reward)  # Add this future reward as a candidate.
+
+                candidate_vectors = get_non_dominated(candidate_vectors)  # Keep only the non dominated vectors.
+                new_candidates = set()
+                for candidate in candidate_vectors:
+                    new_candidates.add(tuple(candidate))  # Add the non dominated vectors to a set again.
+                nd_vectors_update[state][action] = new_candidates  # Save these for updating later.
+
+        if check_converged(nd_vectors_update, nd_vectors, epsilon):  # Check if we converged already.
             columns = ['s', 'a', 'ns']
             columns.extend([f'N{i}' for i in range(num_objectives)])
             columns.extend([f'vs{i}' for i in range(num_objectives)])
 
-            print(columns)
-
             data = []
-            for state in nn_dataset:
-                dict_v = nn_dataset[state][0]
-                dict_c = nn_dataset[state][1]
-                for value in dict_c:
-                    future_value, reward = dict_c[value]
-                    # N = (val - rew)/gamma
-                    N = (value - reward)/gamma
-                    # nd next vectors, s, a, ns
-                    info = dict_v[tuple(future_value)]
-                    entry = [info[1], info[2], info[3]]
-                    entry.extend(N)
-                    entry.extend(info[0])
-                    data.append(entry)
-                    print(data)
-                assert(state == info[1])
+
+            for instance in dataset:
+                s = [instance.s]
+                a = [instance.a]
+                ns = [instance.ns]
+                N = list(instance.N)
+                vs = list(instance.vs)
+                data.append(s + a + ns + N + vs)
+
             df = pd.DataFrame(data, columns=columns)
             df.to_csv(f'{path_data}NN_{file}.csv', index=False)
             break  # If converged, break from the while loop and save data
@@ -132,47 +125,48 @@ if __name__ == '__main__':
     parser.add_argument('-gamma', type=float, default=0.8, help="The discount factor for expected rewards.")
     parser.add_argument('-epsilon', type=float, default=0.05, help="How much error we tolerate on each objective.")
     parser.add_argument('-decimals', type=int, default=4, help="The number of decimals to include for each return.")
+    parser.add_argument('-dir', type=str, default='results', help='The directory to save all results to.')
 
     args = parser.parse_args()
 
     env_name = args.env
 
     if env_name == 'RandomMOMDP-v0':
-        kwargs = {'nstates': args.states, 'nobjectives': args.obj, 'nactions': args.act, 'nsuccessor': args.suc, 'seed': args.seed}
-        env = gym.make('RandomMOMDP-v0', kwargs=kwargs)
+        env = gym.make('RandomMOMDP-v0', nstates=args.states, nobjectives=args.obj, nactions=args.act, nsuccessor=args.suc, seed=args.seed)
         num_states = env.observation_space.n
         num_actions = env.action_space.n
         num_objectives = env._nobjectives
-
+        transition_function = env._transition_function
+        reward_function = env._reward_function
     else:
         env = gym.make('DeepSeaTreasure-v0')
         num_states = env.nS
         num_actions = env.nA
         num_objectives = 2
 
+        transition_function = env.P
+        reward_function = env._reward_function
 
+    gamma = args.gamma
+    epsilon = args.epsilon
+    decimals = args.decimals
 
-    transition_function = env._transition_function
-    reward_function = env._reward_function
+    Data = namedtuple('Data', ['vs', 'N', 's', 'a', 'ns'])
 
-    gamma = 0.8  # Discount factor
-    eps = 0.05  # How close we want to go to the PCS.
-    decims = 4
-
-    path_data = f'results/'  # /{mooc}/{hp.use_baseline}'
+    path_data = args.dir
     mkdir_p(path_data)
 
     file = f'MPD_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}'
 
     env_info = env.info
-    env_info['epsilon'] = eps
+    env_info['epsilon'] = epsilon
     env_info['gamma'] = gamma
 
-    nd_vectors = pvi(decimals=decims, epsilon=eps, gamma=gamma)
+    nd_vectors = pvi(decimals=decimals, epsilon=epsilon, gamma=gamma)
 
     for idx, vectors in enumerate(nd_vectors):
         print(repr(idx), repr(vectors))
 
     save_vectors(nd_vectors, file, path_data, num_objectives)
-    json.dump(env_info, open(f'{path_data}{file}.json', "w"))
+    json.dump(env_info, open(f'{path_data}/{file}.json', "w"))
 
