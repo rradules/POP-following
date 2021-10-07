@@ -1,11 +1,18 @@
 import errno
 import os
+import json
+import math
+
 import numpy as np
 import pandas as pd
-import math
 
 
 def mkdir_p(path):
+    """
+    This function will create the necessary path if it does not exist yet.
+    :param path:
+    :return:
+    """
     try:
         os.makedirs(path)
     except OSError as exc:
@@ -23,7 +30,6 @@ def get_non_dominated(candidates):
     Source: https://stackoverflow.com/questions/32791911/fast-calculation-of-pareto-front-in-python
     """
     candidates = np.array(list(candidates))
-    #print(candidates)
     # sort candidates by decreasing sum of coordinates
     candidates = candidates[candidates.sum(1).argsort()[::-1]]
     # initialize a boolean mask for undominated points
@@ -37,10 +43,9 @@ def get_non_dominated(candidates):
         # find all points not dominated by i
         # since points are sorted by coordinate sum
         # i cannot dominate any points in 1,...,i-1
-        nd[i+1:n] = (candidates[i+1:] > candidates[i]).any(1)
+        nd[i + 1:n] = (candidates[i + 1:] > candidates[i]).any(1)
         # keep points non-dominated so far
         candidates = candidates[nd[:n]]
-    #print('non-dom', candidates)
     return candidates
 
 
@@ -63,7 +68,18 @@ def is_dominated(candidate, vectors):
         return False
 
 
-def save_vectors(nd_vectors, file, path_data, num_objectives):
+def print_pcs(pcs):
+    """
+    This function prints the Pareto coverage set.
+    :param pcs: The pareto coverage set.
+    :return: /
+    """
+    for state, sets in enumerate(pcs):
+        for action, set in enumerate(sets):
+            print(f'State {state} and action {action}: {repr(set)}')
+
+
+def save_pcs(nd_vectors, file, path_data, num_objectives):
     """
     This function will save the generated pareto coverage set to a CSV file.
     :param nd_vectors: A set of non-dominated vectors per state.
@@ -72,7 +88,6 @@ def save_vectors(nd_vectors, file, path_data, num_objectives):
     :param num_objectives: number of objectives.
     :return: /
     """
-
     columns = [f'Objective {i}' for i in range(num_objectives)]
     columns = ['State', 'Action'] + columns
     results = []
@@ -82,7 +97,38 @@ def save_vectors(nd_vectors, file, path_data, num_objectives):
                 row = [state, action] + list(vector)
                 results.append(row)
     df = pd.DataFrame(results, columns=columns)
-    df.to_csv(f'{path_data}PCS_{file}.csv', index=False)
+    df.to_csv(f'{path_data}/PCS_{file}.csv', index=False)
+
+
+def save_momdp(path, file, num_states, num_objectives, num_actions, num_successors, seed, transition_function,
+               reward_function, epsilon, gamma):
+    """
+    This function saves all MOMDP info to a JSON file.
+    :param path: The directory to save the new file in.
+    :param file: The name of the info file.
+    :param num_states: The number of states in the MOMDP.
+    :param num_objectives: The number of objectives in the MOMDP.
+    :param num_actions: The number of actions in the MOMDP.
+    :param num_successors: The number of successor states in the MOMDP.
+    :param seed: The random seed that was used.
+    :param transition_function: The transition function in the MOMDP.
+    :param reward_function: The reward function in the MOMDP.
+    :param epsilon: The epsilon value for PVI.
+    :param gamma: The gamma value for PVI.
+    :return: /
+    """
+    info = {
+        'states': num_states,
+        'objectives': num_objectives,
+        'actions': num_actions,
+        'successors': num_successors,
+        'seed': seed,
+        'transition': transition_function.tolist(),
+        'reward': reward_function.tolist(),
+        'epsilon': epsilon,
+        'gamma': gamma
+    }
+    json.dump(info, open(f'{path}/{file}.json', "w"))
 
 
 def check_converged(new_nd_vectors, old_nd_vectors, epsilon):
