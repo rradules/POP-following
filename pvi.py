@@ -1,5 +1,4 @@
 import argparse
-import json
 import time
 import copy
 import itertools
@@ -120,7 +119,7 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-env', type=str, default='RandomMOMDP-v0', help="The environment to run PVI on.")
+    parser.add_argument('-env', type=str, default='DeepSeaTreasure-v0', help="The environment to run PVI on.")
     parser.add_argument('-states', type=int, default=5, help="The number of states. Only used with the random MOMDP.")
     parser.add_argument('-obj', type=int, default=2, help="The number of objectives. Only used with the random MOMDP.")
     parser.add_argument('-act', type=int, default=2, help="The number of actions. Only used with the random MOMDP.")
@@ -144,19 +143,18 @@ if __name__ == '__main__':
         transition_function = env._transition_function
         reward_function = env._reward_function
     else:
-        env = gym.make('DeepSeaTreasure-v0')
+        env = gym.make('DeepSeaTreasure-v0', seed=args.seed)
         num_states = env.nS
         num_actions = env.nA
         num_objectives = 2
         num_successors = 4
-        transition_function = env.P
+        transition_function = env._transition_function
         reward_function = env._reward_function
 
     seed = args.seed
     gamma = args.gamma
     epsilon = args.epsilon
     decimals = args.decimals
-
     np.random.seed(seed)
     Data = namedtuple('Data', ['vs', 'N', 's', 'a', 'ns'])
 
