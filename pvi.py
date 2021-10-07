@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 
 from collections import namedtuple
-from utils import mkdir_p, get_non_dominated, save_vectors, check_converged
+from utils import mkdir_p, get_non_dominated, check_converged, print_pcs, save_pcs, save_momdp
 
 from gym.envs.registration import register
 
@@ -23,6 +23,25 @@ register(
         id='DeepSeaTreasure-v0',
         entry_point='deep_sea_treasure:DeepSeaTreasureEnv',
 )
+
+
+def save_training_data(dataset):
+    columns = ['s', 'a', 'ns']
+    columns.extend([f'N{i}' for i in range(num_objectives)])
+    columns.extend([f'vs{i}' for i in range(num_objectives)])
+
+    data = []
+
+    for instance in dataset:
+        s = [instance.s]
+        a = [instance.a]
+        ns = [instance.ns]
+        N = list(instance.N)
+        vs = list(instance.vs)
+        data.append(s + a + ns + N + vs)
+
+    df = pd.DataFrame(data, columns=columns)
+    df.to_csv(f'{path_data}/NN_{file}.csv', index=False)
 
 
 def pvi(decimals=4, epsilon=0.05, gamma=0.8):
@@ -86,22 +105,7 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8):
                 nd_vectors_update[state][action] = new_candidates  # Save these for updating later.
 
         if check_converged(nd_vectors_update, nd_vectors, epsilon):  # Check if we converged already.
-            columns = ['s', 'a', 'ns']
-            columns.extend([f'N{i}' for i in range(num_objectives)])
-            columns.extend([f'vs{i}' for i in range(num_objectives)])
-
-            data = []
-
-            for instance in dataset:
-                s = [instance.s]
-                a = [instance.a]
-                ns = [instance.ns]
-                N = list(instance.N)
-                vs = list(instance.vs)
-                data.append(s + a + ns + N + vs)
-
-            df = pd.DataFrame(data, columns=columns)
-            df.to_csv(f'{path_data}NN_{file}.csv', index=False)
+            save_training_data(dataset)
             break  # If converged, break from the while loop and save data
         else:
             nd_vectors = copy.deepcopy(nd_vectors_update)  # Else perform a deep copy an go again.
@@ -117,14 +121,14 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-env', type=str, default='RandomMOMDP-v0', help="The environment to run PVI on.")
-    parser.add_argument('-states', type=int, default=10, help="The number of states. Only used with the random MOMDP.")
+    parser.add_argument('-states', type=int, default=5, help="The number of states. Only used with the random MOMDP.")
     parser.add_argument('-obj', type=int, default=2, help="The number of objectives. Only used with the random MOMDP.")
     parser.add_argument('-act', type=int, default=2, help="The number of actions. Only used with the random MOMDP.")
-    parser.add_argument('-suc', type=int, default=4, help="The number of successors. Only used with the random MOMDP.")
+    parser.add_argument('-suc', type=int, default=2, help="The number of successors. Only used with the random MOMDP.")
     parser.add_argument('-seed', type=int, default=1, help="The seed for random number generation. ")
     parser.add_argument('-gamma', type=float, default=0.8, help="The discount factor for expected rewards.")
     parser.add_argument('-epsilon', type=float, default=0.05, help="How much error we tolerate on each objective.")
-    parser.add_argument('-decimals', type=int, default=4, help="The number of decimals to include for each return.")
+    parser.add_argument('-decimals', type=int, default=2, help="The number of decimals to include for each return.")
     parser.add_argument('-dir', type=str, default='results', help='The directory to save all results to.')
 
     args = parser.parse_args()
@@ -136,6 +140,7 @@ if __name__ == '__main__':
         num_states = env.observation_space.n
         num_actions = env.action_space.n
         num_objectives = env._nobjectives
+        num_successors = args.suc
         transition_function = env._transition_function
         reward_function = env._reward_function
     else:
@@ -143,30 +148,24 @@ if __name__ == '__main__':
         num_states = env.nS
         num_actions = env.nA
         num_objectives = 2
-
+        num_successors = 4
         transition_function = env.P
         reward_function = env._reward_function
 
+    seed = args.seed
     gamma = args.gamma
     epsilon = args.epsilon
     decimals = args.decimals
 
+    np.random.seed(seed)
     Data = namedtuple('Data', ['vs', 'N', 's', 'a', 'ns'])
 
     path_data = args.dir
     mkdir_p(path_data)
-
     file = f'MPD_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}'
 
-    env_info = env.info
-    env_info['epsilon'] = epsilon
-    env_info['gamma'] = gamma
+    nd_vectors = pvi(decimals=decimals, epsilon=epsilon, gamma=gamma)  # Run PVI.
 
-    nd_vectors = pvi(decimals=decimals, epsilon=epsilon, gamma=gamma)
-
-    for idx, vectors in enumerate(nd_vectors):
-        print(repr(idx), repr(vectors))
-
-    save_vectors(nd_vectors, file, path_data, num_objectives)
-    json.dump(env_info, open(f'{path_data}/{file}.json', "w"))
-
+    print_pcs(nd_vectors)
+    save_momdp(path_data, file, num_states, num_objectives, num_actions, num_successors, seed, transition_function, reward_function, epsilon, gamma)
+    save_pcs(nd_vectors, file, path_data, num_objectives)
