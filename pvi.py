@@ -12,6 +12,17 @@ from utils import mkdir_p, get_non_dominated, save_vectors, check_converged
 from gym.envs.registration import register
 
 
+register(
+        id='RandomMOMDP-v0',
+        entry_point='randommomdp:RandomMOMDP',
+)
+
+register(
+        id='DeepSeaTreasure-v0',
+        entry_point='deep_sea_treasure:DeepSeaTreasureEnv',
+)
+
+
 def pvi(decimals=4, epsilon=0.05, gamma=0.8):
     """
     This function will run the Pareto Value Iteration algorithm.
@@ -111,28 +122,35 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8):
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser()
-    parser.add_argument('-states', type=int, default=10, help="number of states")
-    parser.add_argument('-obj', type=int, default=2, help="number of objectives")
-    parser.add_argument('-act', type=int, default=2, help="number of actions")
-    parser.add_argument('-suc', type=int, default=4, help="number of successors")
-    parser.add_argument('-seed', type=int, default=1, help="seed")
+    parser.add_argument('-env', type=str, default='RandomMOMDP-v0', help="The environment to run PVI on.")
+    parser.add_argument('-states', type=int, default=10, help="The number of states. Only used with the random MOMDP.")
+    parser.add_argument('-obj', type=int, default=2, help="The number of objectives. Only used with the random MOMDP.")
+    parser.add_argument('-act', type=int, default=2, help="The number of actions. Only used with the random MOMDP.")
+    parser.add_argument('-suc', type=int, default=4, help="The number of successors. Only used with the random MOMDP.")
+    parser.add_argument('-seed', type=int, default=1, help="The seed for random number generation. ")
+    parser.add_argument('-gamma', type=float, default=0.8, help="The discount factor for expected rewards.")
+    parser.add_argument('-epsilon', type=float, default=0.05, help="How much error we tolerate on each objective.")
+    parser.add_argument('-decimals', type=int, default=4, help="The number of decimals to include for each return.")
 
     args = parser.parse_args()
 
-    register(
-        id='RandomMOMDP-v0',
-        entry_point='randommomdp:RandomMOMDP',
-        reward_threshold=0.0,
-        kwargs={'nstates': args.states, 'nobjectives': args.obj,
-                'nactions': args.act, 'nsuccessor': args.suc, 'seed': args.seed}
-    )
+    env_name = args.env
 
-    env = gym.make('RandomMOMDP-v0')
-    num_states = env.observation_space.n
-    num_actions = env.action_space.n
-    num_objectives = env._nobjectives
+    if env_name == 'RandomMOMDP-v0':
+        kwargs = {'nstates': args.states, 'nobjectives': args.obj, 'nactions': args.act, 'nsuccessor': args.suc, 'seed': args.seed}
+        env = gym.make('RandomMOMDP-v0', kwargs=kwargs)
+        num_states = env.observation_space.n
+        num_actions = env.action_space.n
+        num_objectives = env._nobjectives
+
+    else:
+        env = gym.make('DeepSeaTreasure-v0')
+        num_states = env.nS
+        num_actions = env.nA
+        num_objectives = 2
+
+
 
     transition_function = env._transition_function
     reward_function = env._reward_function
