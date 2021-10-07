@@ -2,7 +2,6 @@ from gym.envs.toy_text import discrete
 import numpy as np
 import cv2
 
-
 UP = 0
 RIGHT = 1
 DOWN = 2
@@ -10,19 +9,21 @@ LEFT = 3
 
 
 class DeepSeaTreasureEnv(discrete.DiscreteEnv):
-
     metadata = {'render.modes': ['human', 'rgb_array']}
 
-    def __init__(self, width=10):
-
-        self.shape = (width+1, width)
+    def __init__(self, width=10, noise=0.0, seed=1):
+        np.random.seed(seed=seed)
+        self.shape = (width + 1, width)
         self.start_state_index = 0
 
-        nS = np.prod(self.shape)
+        nS = int(np.prod(self.shape))
         nA = 4
+        nO = 2
 
         # Calculate transition probabilities and rewards
-        P = {}
+        P = {}  # Transitions and rewards as required by gym
+        self._transition_function = np.zeros((nS, nA, nS))  # Cleaner code for transitions.
+        self._reward_function = np.zeros((nS, nA, nS, nO))  # And cleaner code for rewards.
         for s in range(nS):
             position = np.unravel_index(s, self.shape)
             P[s] = {a: [] for a in range(nA)}
@@ -30,6 +31,16 @@ class DeepSeaTreasureEnv(discrete.DiscreteEnv):
             P[s][RIGHT] = self._calculate_transition_prob(position, [0, 1])
             P[s][DOWN] = self._calculate_transition_prob(position, [1, 0])
             P[s][LEFT] = self._calculate_transition_prob(position, [0, -1])
+
+            # Build up the transition and reward functions.
+            for action in range(nA):
+                transitions = P[s][action]
+                for transition in transitions:
+                    prob = transition[0]
+                    next_state = transition[1]
+                    reward = transition[2]
+                    self._transition_function[s, action, next_state] = prob
+                    self._reward_function[s, action, next_state] = reward
 
         # Calculate initial state distribution
         # We always start in state (0, 0)
@@ -58,7 +69,7 @@ class DeepSeaTreasureEnv(discrete.DiscreteEnv):
         u = []
         treasures = self._treasures()
         for p in treasures.keys():
-            for i in range(p[0]+1, self.shape[0]):
+            for i in range(p[0] + 1, self.shape[0]):
                 u.append((i, p[1]))
         return u
 
@@ -91,23 +102,25 @@ class DeepSeaTreasureEnv(discrete.DiscreteEnv):
         else:
             reward = [0, -1]
             done = False
-        #TODO: make env stochastic
-        return [(1., new_state, np.array(reward), done)]
+        # TODO: make env stochastic
+        return [(1., new_state, np.array(reward, dtype=float), done)]
 
     def render(self, mode='rgb_array'):
         tile_size = 30
-        img = np.full((self.shape[0]*tile_size, self.shape[1]*tile_size, 3), 255, np.uint8)
+        img = np.full((self.shape[0] * tile_size, self.shape[1] * tile_size, 3), 255, np.uint8)
 
-        y = np.tile(np.arange(tile_size, (self.shape[0]+1)*tile_size, tile_size), self.shape[1])
-        x = np.repeat(np.arange(tile_size, (self.shape[1]+1)*tile_size, tile_size), self.shape[0])
+        y = np.tile(np.arange(tile_size, (self.shape[0] + 1) * tile_size, tile_size), self.shape[1])
+        x = np.repeat(np.arange(tile_size, (self.shape[1] + 1) * tile_size, tile_size), self.shape[0])
         for x_i in x:
             for y_i in y:
                 cv2.circle(img, (x_i, y_i), 0, (255, 0, 0))
 
         for c, t in self._treasures().items():
-            cv2.putText(img, str(t), (tile_size*c[1]+tile_size//2, tile_size*c[0]+tile_size//2), cv2.FONT_HERSHEY_SIMPLEX, .2, 255)
+            cv2.putText(img, str(t), (tile_size * c[1] + tile_size // 2, tile_size * c[0] + tile_size // 2),
+                        cv2.FONT_HERSHEY_SIMPLEX, .2, 255)
         position = np.unravel_index(self.s, self.shape)
-        cv2.putText(img, 'sub', (tile_size*position[1]+tile_size//2, tile_size*position[0]+tile_size//2), cv2.FONT_HERSHEY_SIMPLEX, .2, 255)
+        cv2.putText(img, 'sub', (tile_size * position[1] + tile_size // 2, tile_size * position[0] + tile_size // 2),
+                    cv2.FONT_HERSHEY_SIMPLEX, .2, 255)
 
         return img
 
@@ -116,7 +129,7 @@ class BountyfulSeaTreasureEnv(DeepSeaTreasureEnv):
 
     def __init__(self, width=10):
         # random treasure-depths for each x-pos
-        depths = np.random.choice(range(4), size=width-1, p=[.3, .5, .1, .1])
+        depths = np.random.choice(range(4), size=width - 1, p=[.3, .5, .1, .1])
         # add first treasure depth (always 1)
         depths = np.append([1], depths)
         depths = np.cumsum(depths)
@@ -126,8 +139,6 @@ class BountyfulSeaTreasureEnv(DeepSeaTreasureEnv):
         super(BountyfulSeaTreasureEnv, self).__init__(width=width)
 
     def _treasures(self):
+        pareto_front = lambda x: np.round(-45.64496 - (59.99308 / -0.2756738) * (1 - np.exp(0.2756738 * x)))
 
-        pareto_front = lambda x: np.round(-45.64496 - (59.99308/-0.2756738)*(1 - np.exp(0.2756738*x)))
-
-        return {(d, i): pareto_front(-(i+d)) for i, d in enumerate(self.depths)}
-
+        return {(d, i): pareto_front(-(i + d)) for i, d in enumerate(self.depths)}
