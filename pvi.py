@@ -119,15 +119,15 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-env', type=str, default='DeepSeaTreasure-v0', help="The environment to run PVI on.")
-    parser.add_argument('-states', type=int, default=5, help="The number of states. Only used with the random MOMDP.")
+    parser.add_argument('-env', type=str, default='RandomMOMDP-v0', help="The environment to run PVI on.")
+    parser.add_argument('-states', type=int, default=10, help="The number of states. Only used with the random MOMDP.")
     parser.add_argument('-obj', type=int, default=2, help="The number of objectives. Only used with the random MOMDP.")
     parser.add_argument('-act', type=int, default=2, help="The number of actions. Only used with the random MOMDP.")
-    parser.add_argument('-suc', type=int, default=2, help="The number of successors. Only used with the random MOMDP.")
-    parser.add_argument('-seed', type=int, default=1, help="The seed for random number generation. ")
+    parser.add_argument('-suc', type=int, default=4, help="The number of successors. Only used with the random MOMDP.")
+    parser.add_argument('-seed', type=int, default=42, help="The seed for random number generation. ")
     parser.add_argument('-gamma', type=float, default=0.8, help="The discount factor for expected rewards.")
     parser.add_argument('-epsilon', type=float, default=0.05, help="How much error we tolerate on each objective.")
-    parser.add_argument('-decimals', type=int, default=2, help="The number of decimals to include for each return.")
+    parser.add_argument('-decimals', type=int, default=4, help="The number of decimals to include for each return.")
     parser.add_argument('-dir', type=str, default='results', help='The directory to save all results to.')
 
     args = parser.parse_args()
