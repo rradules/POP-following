@@ -147,7 +147,7 @@ if __name__ == '__main__':
         num_states = env.nS
         num_actions = env.nA
         num_objectives = 2
-        num_successors = 4
+        num_successors = env.nS
         transition_function = env._transition_function
         reward_function = env._reward_function
 
