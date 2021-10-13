@@ -7,6 +7,12 @@ RIGHT = 1
 DOWN = 2
 LEFT = 3
 
+UP_MOVE = [-1, 0]
+DOWN_MOVE = [1, 0]
+RIGHT_MOVE = [0, 1]
+LEFT_MOVE = [0, -1]
+ACTIONS = [UP_MOVE, DOWN_MOVE, RIGHT_MOVE, LEFT_MOVE]
+
 
 class DeepSeaTreasureEnv(discrete.DiscreteEnv):
     metadata = {'render.modes': ['human', 'rgb_array']}
@@ -27,10 +33,10 @@ class DeepSeaTreasureEnv(discrete.DiscreteEnv):
         for s in range(nS):
             position = np.unravel_index(s, self.shape)
             P[s] = {a: [] for a in range(nA)}
-            P[s][UP] = self._calculate_transition_prob(position, [-1, 0])
-            P[s][RIGHT] = self._calculate_transition_prob(position, [0, 1])
-            P[s][DOWN] = self._calculate_transition_prob(position, [1, 0])
-            P[s][LEFT] = self._calculate_transition_prob(position, [0, -1])
+            P[s][UP] = self._calculate_transition_prob(position, UP_MOVE, noise)
+            P[s][RIGHT] = self._calculate_transition_prob(position, RIGHT_MOVE, noise)
+            P[s][DOWN] = self._calculate_transition_prob(position, DOWN_MOVE, noise)
+            P[s][LEFT] = self._calculate_transition_prob(position, LEFT_MOVE, noise)
 
             # Build up the transition and reward functions.
             for action in range(nA):
@@ -85,25 +91,44 @@ class DeepSeaTreasureEnv(discrete.DiscreteEnv):
         coord[1] = max(coord[1], 0)
         return coord
 
-    def _calculate_transition_prob(self, current, delta):
-
+    def _calculate_transition_prob(self, current, delta, noise):
         unreachable = self._unreachable_positions()
         treasures = self._treasures()
-        new_position = np.array(current) + np.array(delta)
-        new_position = self._limit_coordinates(new_position).astype(int)
-        new_position = tuple(new_position)
-        if new_position in unreachable:
-            new_position = tuple(current)
-        new_state = np.ravel_multi_index(new_position, self.shape)
+        intended_position = np.array(current) + np.array(delta)
+        intended_position = self._limit_coordinates(intended_position).astype(int)
+        intended_position = tuple(intended_position)
+        intended_position = np.ravel_multi_index(intended_position, self.shape)
 
-        if new_position in treasures:
-            reward = [treasures[new_position], -1]
-            done = True
+        reachable = {}
+        for action in ACTIONS:
+            new_position = np.array(current) + np.array(action)
+            new_position = self._limit_coordinates(new_position).astype(int)
+            new_position = tuple(new_position)
+
+            if new_position in unreachable:
+                new_position = tuple(current)
+            new_state = np.ravel_multi_index(new_position, self.shape)
+
+            if new_position in treasures:
+                reward = [treasures[new_position], -1]
+                done = True
+            else:
+                reward = [0, -1]
+                done = False
+            reachable[new_state] = (np.array(reward), done)
+
+        transitions = []
+        if len(reachable) == 1:
+            for state, returns in reachable.items():
+                transitions.append((1., state, returns[0], returns[1]))
         else:
-            reward = [0, -1]
-            done = False
-        # TODO: make env stochastic
-        return [(1., new_state, np.array(reward, dtype=float), done)]
+            noise_prob = noise / (len(reachable) - 1)
+            for state, returns in reachable.items():
+                if state == intended_position:
+                    transitions.append((1-noise, state, returns[0], returns[1]))
+                else:
+                    transitions.append((noise_prob, state, returns[0], returns[1]))
+        return transitions
 
     def render(self, mode='rgb_array'):
         tile_size = 30
