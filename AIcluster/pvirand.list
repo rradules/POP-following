@@ -1,0 +1,1 @@
+srun python pvi.py -env 'RandomMOMDP-v0' -states 20 -obj 2 -act 3 -suc 7 -seed 42 -gamma 0.8 -epsilon 0.05 -decimals 3
