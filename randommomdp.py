@@ -17,6 +17,13 @@ class RandomMOMDP(gym.Env):
         #rew = sp.rand(nstates, nactions*nobjectives, density=density)
         #self._reward_function = rew.A.reshape(nstates, nactions, nobjectives)
 
+        self._old_reward = np.random.rand(nstates, nactions, nobjectives)
+        self._old_reward_function = np.zeros((nstates, nactions, nstates, nobjectives))
+        for s1 in range(nstates):
+            for a in range(nactions):
+                for s2 in range(nstates):
+                    for o in range(nobjectives):
+                        self._old_reward_function[s1, a, s2, o] = self._old_reward[s1, a, o]
         self._reward_function = np.random.rand(nstates, nactions, nstates, nobjectives)
 
         # Ensure that every state has at most nsuccessor successors
