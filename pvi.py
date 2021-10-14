@@ -143,7 +143,7 @@ if __name__ == '__main__':
         transition_function = env._transition_function
         reward_function = env._old_reward_function
     elif env_name == 'RandomMOMDP-v1':
-        env = gym.make('RandomMOMDP-v0', nstates=args.states, nobjectives=args.obj, nactions=args.act, nsuccessor=args.suc, seed=args.seed)
+        env = gym.make('RandomMOMDP-v1', nstates=args.states, nobjectives=args.obj, nactions=args.act, nsuccessor=args.suc, seed=args.seed)
         num_states = env.observation_space.n
         num_actions = env.action_space.n
         num_objectives = env._nobjectives
