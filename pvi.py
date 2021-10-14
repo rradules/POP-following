@@ -87,7 +87,7 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8):
                     for idx, next_state in enumerate(next_states):
                         transition_prob = transition_function[state, action, next_state]  # The transition probability.
                         reward = reward_function[state, action, next_state]  # The reward associated with this.
-                        future_vec = next_vectors[idx]  # The vector obtained in the next state.
+                        future_vec = np.array(next_vectors[idx])  # The vector obtained in the next state.
                         disc_future_reward = gamma * future_vec  # The discounted future reward.
                         contribution = transition_prob * (reward + disc_future_reward)  # The contribution of this vector.
                         future_reward += contribution  # Add it to the future reward.
@@ -103,11 +103,7 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8):
 
                     candidate_vectors.add(future_reward)  # Add this future reward as a candidate.
 
-                candidate_vectors = get_non_dominated(candidate_vectors)  # Keep only the non dominated vectors.
-                new_candidates = set()
-                for candidate in candidate_vectors:
-                    new_candidates.add(tuple(candidate))  # Add the non dominated vectors to a set again.
-                nd_vectors_update[state][action] = new_candidates  # Save these for updating later.
+                nd_vectors_update[state][action] = get_non_dominated(candidate_vectors)  # Save ND for updating later.
 
         if check_converged(nd_vectors_update, nd_vectors, epsilon):  # Check if we converged already.
             save_training_data(dataset)
@@ -130,6 +126,7 @@ if __name__ == '__main__':
     parser.add_argument('-obj', type=int, default=2, help="The number of objectives. Only used with the random MOMDP.")
     parser.add_argument('-act', type=int, default=2, help="The number of actions. Only used with the random MOMDP.")
     parser.add_argument('-suc', type=int, default=4, help="The number of successors. Only used with the random MOMDP.")
+    parser.add_argument('-noise', type=float, default=0.0, help="The stochasticity in state transitions.")
     parser.add_argument('-seed', type=int, default=42, help="The seed for random number generation. ")
     parser.add_argument('-gamma', type=float, default=0.8, help="The discount factor for expected rewards.")
     parser.add_argument('-epsilon', type=float, default=0.05, help="How much error we tolerate on each objective.")
@@ -157,7 +154,7 @@ if __name__ == '__main__':
         transition_function = env._transition_function
         reward_function = env._reward_function
     else:
-        env = gym.make('DeepSeaTreasure-v0', seed=args.seed)
+        env = gym.make('DeepSeaTreasure-v0', seed=args.seed, noise=args.noise)
         num_states = env.nS
         num_actions = env.nA
         num_objectives = 2

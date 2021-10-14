@@ -46,7 +46,11 @@ def get_non_dominated(candidates):
         nd[i + 1:n] = (candidates[i + 1:] > candidates[i]).any(1)
         # keep points non-dominated so far
         candidates = candidates[nd[:n]]
-    return candidates
+
+    non_dominated = set()
+    for candidate in candidates:
+        non_dominated.add(tuple(candidate))  # Add the non dominated vectors to a set again.
+    return non_dominated
 
 
 def is_dominated(candidate, vectors):
