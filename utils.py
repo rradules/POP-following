@@ -28,24 +28,20 @@ def get_non_dominated(candidates):
     :param candidates: The input set of candidate vectors.
     :return: The non-dominated subset of this input set.
     Source: https://stackoverflow.com/questions/32791911/fast-calculation-of-pareto-front-in-python
+    The code provided in all the stackoverflow answers is wrong. Important changes have been made in this function.
     """
-    candidates = np.array(list(candidates))
-    # sort candidates by decreasing sum of coordinates
-    candidates = candidates[candidates.sum(1).argsort()[::-1]]
-    # initialize a boolean mask for undominated points
-    # to avoid creating copies each iteration
-    nd = np.ones(candidates.shape[0], dtype=bool)
-    for i in range(candidates.shape[0]):
-        # process each point in turn
-        n = candidates.shape[0]
-        if i >= n:
+    candidates = np.array(list(candidates))  # Turn the input set into a numpy array.
+    candidates = candidates[candidates.sum(1).argsort()[::-1]]  # Sort candidates by decreasing sum of coordinates.
+    for i in range(candidates.shape[0]):  # Process each point in turn.
+        n = candidates.shape[0]  # Check current size of the candidates.
+        if i >= n:  # If we've eliminated everything up until this size we stop.
             break
+        nd = np.ones(candidates.shape[0], dtype=bool)  # Initialize a boolean mask for undominated points.
         # find all points not dominated by i
         # since points are sorted by coordinate sum
         # i cannot dominate any points in 1,...,i-1
-        nd[i + 1:n] = (candidates[i + 1:] > candidates[i]).any(1)
-        # keep points non-dominated so far
-        candidates = candidates[nd[:n]]
+        nd[i + 1:] = np.any(candidates[i + 1:] > candidates[i], axis=1)
+        candidates = candidates[nd]  # Grab only the non-dominated vectors using the generated bitmask.
 
     non_dominated = set()
     for candidate in candidates:
