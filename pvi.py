@@ -25,6 +25,11 @@ register(
 
 
 def save_training_data(dataset):
+    """
+    This function saves the dataset in a structured way for later use in training a neural network.
+    :param dataset: The created dataset from PVI.
+    :return: /
+    """
     columns = ['s', 'a', 'ns']
     columns.extend([f'N{i}' for i in range(num_objectives)])
     columns.extend([f'vs{i}' for i in range(num_objectives)])
@@ -82,10 +87,11 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8):
                     for idx, next_state in enumerate(next_states):
                         transition_prob = transition_function[state, action, next_state]  # The transition probability.
                         reward = reward_function[state, action, next_state]  # The reward associated with this.
-                        disc_future_reward = gamma * next_vectors[idx]  # The discounted future reward.
+                        future_vec = next_vectors[idx]  # The vector obtained in the next state.
+                        disc_future_reward = gamma * future_vec  # The discounted future reward.
                         contribution = transition_prob * (reward + disc_future_reward)  # The contribution of this vector.
                         future_reward += contribution  # Add it to the future reward.
-                        N += disc_future_reward  # Add the component of V from next value vectors to N
+                        N += transition_prob * future_vec  # Add the component of V from next value vectors to N.
 
                     future_reward = tuple(np.around(future_reward, decimals=decimals))  # Round the future reward.
                     N = tuple(np.around(N, decimals=decimals))  # Round N.
@@ -143,7 +149,7 @@ if __name__ == '__main__':
         transition_function = env._transition_function
         reward_function = env._old_reward_function
     elif env_name == 'RandomMOMDP-v1':
-        env = gym.make('RandomMOMDP-v1', nstates=args.states, nobjectives=args.obj, nactions=args.act, nsuccessor=args.suc, seed=args.seed)
+        env = gym.make('RandomMOMDP-v0', nstates=args.states, nobjectives=args.obj, nactions=args.act, nsuccessor=args.suc, seed=args.seed)
         num_states = env.observation_space.n
         num_actions = env.action_space.n
         num_objectives = env._nobjectives
