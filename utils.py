@@ -2,8 +2,6 @@ import errno
 import os
 import json
 import math
-import copy
-import random
 
 import numpy as np
 import pandas as pd
@@ -22,37 +20,6 @@ def mkdir_p(path):
             pass
         else:
             raise
-
-
-def generate_circle_set(radius, nd_points=1000, total_points=10000):
-    """
-    This function generates a set with a circle boundary that has a known pareto front.
-    :param radius: The radius of the circle
-    :param nd_points: The number of points in the non-dominated set.
-    :param total_points: The total number of points for the set.
-    :return: The non-dominated set and the total set.
-    """
-    complete_list = []
-
-    for _ in range(nd_points):
-        theta = np.random.uniform(0, math.pi/2)
-        x = radius * math.cos(theta)
-        y = radius * math.sin(theta)
-        coord = tuple([x, y])
-        complete_list.append(coord)
-
-    nd_list = copy.deepcopy(complete_list)
-    dominated_points = total_points - nd_points
-
-    for point in random.choices(complete_list, k=dominated_points):
-        new_x = point[0] - random.random()
-        new_y = point[1] - random.random()
-        coord = tuple([new_x, new_y])
-        complete_list.append(coord)
-
-    nd_set = set(nd_list)
-    complete_set = set(complete_list)
-    return nd_set, complete_set
 
 
 def get_non_dominated(candidates):
@@ -182,11 +149,3 @@ def check_converged(new_nd_vectors, old_nd_vectors, epsilon):
                 if min_epsilon > epsilon:  # Early stop if the minimum epsilon for a vector is already above the threshold.
                     return False
     return True
-
-
-if __name__ == '__main__':
-    nd_set, complete_set = generate_circle_set(5)
-    pcs = get_non_dominated(complete_set)
-    print(pcs)
-    print(nd_set)
-    print(pcs == nd_set)
