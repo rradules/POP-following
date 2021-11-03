@@ -18,17 +18,36 @@ def print_test_result(name, success):
         print(f'❌ Test for {name} failed')
 
 
+def generate_dominated_points(nd_list, num_dominated):
+    """
+    This function generates a number of dominated points starting from a list of non dominated points.
+    :param nd_list: The list of non dominated points.
+    :param num_dominated: The number of dominated points to generate.
+    :return: A list of dominated points.
+    """
+    dominated_list = []
+    dominated_by = random.choices(nd_list, k=num_dominated)  # Randomly select points to be dominated by.
+
+    for point in dominated_by:  # Loop over all points to be dominated by.
+        new_x = point[0] - min(1e-10, random.random())  # Clip the point to ensure it is strictly smaller.
+        new_y = point[1] - min(1e-10, random.random())
+        coord = tuple([new_x, new_y])
+        dominated_list.append(coord)  # Add the point.
+
+    return dominated_list
+
+
 def generate_circle_set(radius=5, nd_points=1000, total_points=10000, x_center=0, y_center=0):
     """
     This function generates a set with a circle boundary that has a known pareto front.
     :param radius: The radius of the circle
     :param nd_points: The number of points in the non-dominated set.
     :param total_points: The total number of points for the set.
+    :param x_center: The x coordinate of the center.
+    :param y_center: The y coordinate of the center.
     :return: The non-dominated set and the complete set.
     """
     nd_list = []
-    complete_list = []
-    dominated_points = total_points - nd_points
 
     for _ in range(nd_points):  # Generate the non dominated points in the shape of a circle.
         theta = np.random.uniform(low=0, high=math.pi/2)  # A random angle.
@@ -36,56 +55,41 @@ def generate_circle_set(radius=5, nd_points=1000, total_points=10000, x_center=0
         y = y_center + radius * math.sin(theta)  # The y coordinate.
         coord = tuple([x, y])
         nd_list.append(coord)
-        complete_list.append(coord)
 
-    for point in random.choices(complete_list, k=dominated_points):  # Generate the dominated points.
-        new_x = point[0] - min(1e-10, random.random())
-        new_y = point[1] - min(1e-10, random.random())
-        coord = tuple([new_x, new_y])
-        complete_list.append(coord)
+    num_dominated = total_points - nd_points
+    dominated_list = generate_dominated_points(nd_list, num_dominated)
+    complete_list = nd_list + dominated_list
 
     nd_set = set(nd_list)
     complete_set = set(complete_list)
     return nd_set, complete_set
 
 
-def generate_arbitrary_set(nd_points=1000, total_points=10000, max_x=5, max_y=5):
+def generate_arbitrary_set(nd_points=1000, total_points=10000, min_x=-5, max_x=5, min_y=-5, max_y=5):
     """
     This function generates a set with an arbitrary shape.
     :param nd_points: The total number of non-dominated points.
     :param total_points: The total number of points in the set.
+    :param min_x: The minimum x value for the points.
+    :param max_x: The maximum x value for the points.
+    :param min_y: The minimum y value for the points.
+    :param max_y: The maximum y value for the points.
     :return: The non-dominated set and the complete set.
     """
-    circle_nd_points = math.ceil(nd_points / 2)  # We generate half the points
-    circle_points = math.ceil(total_points / 2)
-    dominated_points = total_points - circle_points
-    nd_set, complete_set = generate_circle_set(radius=max_y, nd_points=circle_nd_points, total_points=circle_points)
+    nd_list = []
 
-    nd_list = list(nd_set)
-    complete_list = list(complete_set)
-    nd_list.sort(key=lambda x: (-x[0], x[1]))  # Sort on x coordinate first and then y coordinate.
+    x_coords = np.random.uniform(low=min_x, high=max_x, size=nd_points)
+    y_coords = np.random.uniform(low=min_y, high=max_y, size=nd_points)
+    x_coords.sort()  # Sort in ascending order.
+    y_coords[::-1].sort()  # Sort in descending order.
 
-    for i in range(len(nd_list)-1):
-        coord1 = nd_list[i]
-        coord2 = nd_list[i+1]
-
-        new_x = np.random.uniform(low=coord1[0], high=coord2[0])  # A random new x coordinate between the two points.
-        new_y = np.random.uniform(low=coord2[1], high=coord1[1])  # Y for second coordinate is lower, so reverse.
-        coord = tuple([new_x, new_y])
-
+    for x, y in zip(x_coords, y_coords):  # Create non-dominated points.
+        coord = tuple([x, y])
         nd_list.append(coord)
-        complete_list.append(coord)
 
-    if nd_points % 2 == 0:  # This brings us to the required number of points when this is even.
-        coord = tuple([max_x, 0])
-        nd_list.append(coord)
-        complete_list.append(coord)
-
-    for point in random.choices(complete_list, k=dominated_points):  # Generate the dominated points.
-        new_x = point[0] - min(1e-10, random.random())
-        new_y = point[1] - min(1e-10, random.random())
-        coord = tuple([new_x, new_y])
-        complete_list.append(coord)
+    num_dominated = total_points - nd_points
+    dominated_list = generate_dominated_points(nd_list, num_dominated)
+    complete_list = nd_list + dominated_list
 
     nd_set = set(nd_list)
     complete_set = set(complete_list)
