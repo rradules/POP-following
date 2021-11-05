@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 
 from collections import namedtuple
-from utils import mkdir_p, get_non_dominated, check_converged, print_pcs, save_pcs, save_momdp
+from utils import mkdir_p, get_non_dominated, check_converged, print_pcs, save_pcs, save_momdp, get_best
 
 from gym.envs.registration import register
 
@@ -77,12 +77,10 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8):
                     # We take the union of all state-action non dominated vectors.
                     # We then only keep the non dominated vectors.
                     # We cast the resulting set to a list for later processing.
-                    #lv.append(list(get_non_dominated(set().union(*[nd_vectors[next_state][a] for a in range(num_actions)]))))
-                    lv.append(list(get_non_dominated(set().union(*nd_vectors[next_state]))))
+                    lv.append(list(get_best(set().union(*nd_vectors[next_state]), 10)))
 
                 # This cartesian product will contain tuples with a reward vector for each next state.
                 cartesian_product = itertools.product(*lv)
-                print(len(list(itertools.product(*lv))))
 
                 for next_vectors in cartesian_product:  # Loop over these tuples containing next vectors.
                     future_reward = np.zeros(num_objectives)  # The future reward associated with these next vectors.
@@ -106,7 +104,7 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8):
 
                     candidate_vectors.add(future_reward)  # Add this future reward as a candidate.
 
-                nd_vectors_update[state][action] = get_non_dominated(candidate_vectors)  # Save ND for updating later.
+                nd_vectors_update[state][action] = get_best(candidate_vectors, 10)  # Save ND for updating later.
         if check_converged(nd_vectors_update, nd_vectors, epsilon):  # Check if we converged already.
             save_training_data(dataset)
             break  # If converged, break from the while loop and save data
@@ -131,7 +129,7 @@ if __name__ == '__main__':
     parser.add_argument('-noise', type=float, default=0.0, help="The stochasticity in state transitions.")
     parser.add_argument('-seed', type=int, default=42, help="The seed for random number generation. ")
     parser.add_argument('-gamma', type=float, default=0.8, help="The discount factor for expected rewards.")
-    parser.add_argument('-epsilon', type=float, default=0.05, help="How much error we tolerate on each objective.")
+    parser.add_argument('-epsilon', type=float, default=0.1, help="How much error we tolerate on each objective.")
     parser.add_argument('-decimals', type=int, default=2, help="The number of decimals to include for each return.")
     parser.add_argument('-dir', type=str, default='results', help='The directory to save all results to.')
 

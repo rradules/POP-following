@@ -49,6 +49,56 @@ def get_non_dominated(candidates):
     return non_dominated
 
 
+def crowding_distance_assignment(nd_array):
+    """
+    This function calculates the crowding distance for each point in the set.
+    :param nd_array: The non-dominated set as an array.
+    :return: The crowding distances.
+    """
+    size = nd_array.shape[0]
+    num_objectives = nd_array.shape[1]
+    crowding_distances = np.zeros(size)
+
+    sorted_ind = np.argsort(nd_array, axis=0)  # The indexes of each column sorted.
+    maxima = np.max(nd_array, axis=0)  # The maxima of each objective.
+    minima = np.min(nd_array, axis=0)  # The minima of each objective.
+
+    for obj in range(num_objectives):  # Loop over all objectives.
+        crowding_distances[sorted_ind[0, obj]] = np.inf  # Always include the outer points.
+        crowding_distances[sorted_ind[-1, obj]] = np.inf
+        norm_factor = maxima[obj] - minima[obj]
+
+        for i in range(1, size-1):  # Loop over all other points.
+            distance = nd_array[sorted_ind[i+1, obj], obj] - nd_array[sorted_ind[i-1, obj], obj]
+            crowding_distances[sorted_ind[i, obj]] += distance / norm_factor
+
+    return crowding_distances
+
+
+def get_best(candidates, max_points):
+    """
+    This function gets the best points from the candidate set.
+    :param candidates: The set of candidates.
+    :param max_points: The maximum number of points in the final set.
+    :return: A non dominated set that is potentially further pruned using crowding distance.
+    """
+    non_dominated = get_non_dominated(candidates)  # Get the non dominated points.
+    points_to_remove = len(non_dominated) - max_points  # Calculate the number of points left to remove.
+
+    if points_to_remove > 0:  # If we still need to discard points.
+        nd_array = np.array(list(non_dominated))  # Transform the set to an array.
+        crowding_distances = crowding_distance_assignment(nd_array)  # Calculate the crowding distances.
+        max_ind = np.argsort(crowding_distances)[points_to_remove:]  # Get the indices of the best points.
+        best_points = nd_array[max_ind]  # Select the best points using these indices.
+
+        best_set = set()  # Place everything back into a set.
+        for point in best_points:
+            best_set.add(tuple(point))  # Add the non dominated vectors to a set again.
+        return best_set
+    else:
+        return non_dominated
+
+
 def is_dominated(candidate, vectors):
     """
     This function checks if a candidate vector is dominated by another vector in the set.
