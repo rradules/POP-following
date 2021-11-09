@@ -129,10 +129,10 @@ if __name__ == '__main__':
     parser.add_argument('-noise', type=float, default=0.0, help="The stochasticity in state transitions.")
     parser.add_argument('-seed', type=int, default=42, help="The seed for random number generation. ")
     parser.add_argument('-gamma', type=float, default=0.8, help="The discount factor for expected rewards.")
-    parser.add_argument('-epsilon', type=float, default=0.05, help="How much error we tolerate on each objective.")
-    parser.add_argument('-decimals', type=int, default=3, help="The number of decimals to include for each return.")
+    parser.add_argument('-epsilon', type=float, default=0.1, help="How much error we tolerate on each objective.")
+    parser.add_argument('-decimals', type=int, default=2, help="The number of decimals to include for each return.")
     parser.add_argument('-dir', type=str, default='results', help='The directory to save all results to.')
-    parser.add_argument('-novec', type=int, default=30, help='The number of best vectors to keep.')
+    parser.add_argument('-novec', type=int, default=10, help='The number of best vectors to keep.')
 
     args = parser.parse_args()
 
@@ -167,14 +167,15 @@ if __name__ == '__main__':
     gamma = args.gamma
     epsilon = args.epsilon
     decimals = args.decimals
+    novec = args.novec
     np.random.seed(seed)
     Data = namedtuple('Data', ['vs', 'N', 's', 'a', 'ns'])
 
     path_data = args.dir
     mkdir_p(path_data)
-    file = f'MPD_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}'
+    file = f'MPD_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}_novec{novec}'
 
-    pcs = pvi(decimals=decimals, epsilon=epsilon, gamma=gamma)  # Run PVI.
+    pcs = pvi(decimals=decimals, epsilon=epsilon, gamma=gamma, novec=novec)  # Run PVI.
 
     print_pcs(pcs)
     save_momdp(path_data, file, num_states, num_objectives, num_actions, num_successors, seed, transition_function, reward_function, epsilon, gamma)
