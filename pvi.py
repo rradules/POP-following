@@ -48,7 +48,7 @@ def save_training_data(dataset):
     df.to_csv(f'{path_data}/NN_{file}.csv', index=False)
 
 
-def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=30):
+def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=10):
     """
     This function will run the Pareto Value Iteration algorithm.
     :param decimals: number of decimals to which the value vector should be rounded.
@@ -64,7 +64,7 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=30):
 
     while True:  # We execute the algorithm until convergence.
         print(f'Value Iteration number: {run}')
-        #dataset = []
+        dataset = []
 
         for state in range(num_states):  # Loop over all states.
             print(f'Looping over state {state}')
@@ -100,13 +100,13 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=30):
 
                     for idx, next_state in enumerate(next_states):  # Add the generated vectors to the dataset.
                         follow_vec = next_vectors[idx]
-                        #dataset.append(Data(follow_vec, N, state, action, next_state))
+                        dataset.append(Data(follow_vec, N, state, action, next_state))
 
                     candidate_vectors.add(future_reward)  # Add this future reward as a candidate.
 
                 nd_vectors_update[state][action] = get_best(candidate_vectors, novec)  # Save ND for updating later.
         if check_converged(nd_vectors_update, nd_vectors, epsilon):  # Check if we converged already.
-            #save_training_data(dataset)
+            save_training_data(dataset)
             break  # If converged, break from the while loop and save data
         else:
             nd_vectors = copy.deepcopy(nd_vectors_update)  # Else perform a deep copy an go again.
