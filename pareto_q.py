@@ -52,7 +52,7 @@ class ParetoQ:
             for idx, vec in enumerate(combination):
                 next_state = next_states[idx]
                 transition_prob = transition_probs[next_state]
-                expected_vec = expected_vec + transition_prob * (self.avg_r[state, action, next_state] + np.array(vec))
+                expected_vec += transition_prob * (self.avg_r[state, action, next_state] + self.gamma * np.array(vec))
             expected_vec = tuple(np.around(expected_vec, decimals=self.decimals))  # Round the future reward.
             q_set.add(tuple(expected_vec))
         return q_set
@@ -117,11 +117,11 @@ if __name__ == '__main__':
     parser.add_argument('-act', type=int, default=2, help="The number of actions. Only used with the random MOMDP.")
     parser.add_argument('-suc', type=int, default=4, help="The number of successors. Only used with the random MOMDP.")
     parser.add_argument('-noise', type=float, default=0, help="The stochasticity in state transitions.")
-    parser.add_argument('-seed', type=int, default=42, help="The seed for random number generation. ")
+    parser.add_argument('-seed', type=int, default=1, help="The seed for random number generation. ")
     parser.add_argument('-num_iters', type=int, default=3000, help="The number of iterations to run PQL for.")
-    parser.add_argument('-max_t', type=int, default=100, help="The maximum timesteps per episode.")
+    parser.add_argument('-max_t', type=int, default=1000, help="The maximum timesteps per episode.")
     parser.add_argument('-gamma', type=float, default=1, help="The discount factor for expected rewards.")
-    parser.add_argument('-epsilon', type=float, default=0.25, help="How much error we tolerate on each objective.")
+    parser.add_argument('-epsilon', type=float, default=1, help="How much error we tolerate on each objective.")
     parser.add_argument('-decimals', type=int, default=2, help="The number of decimals to include for each return.")
     parser.add_argument('-dir', type=str, default='results', help='The directory to save all results to.')
 
@@ -162,6 +162,7 @@ if __name__ == '__main__':
     epsilon = args.epsilon
     decimals = args.decimals
     num_iters = args.num_iters
+    max_t = args.max_t
     novec = 'undefined'
     np.random.seed(seed)
     Data = namedtuple('Data', ['vs', 'N', 's', 'a', 'ns'])
@@ -170,7 +171,7 @@ if __name__ == '__main__':
     mkdir_p(path_data)
     file = f'MPD_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}_novec{novec}'
 
-    pcs = run_pql(env, num_iters=num_iters, decimals=decimals, epsilon=epsilon, gamma=gamma)  # Run PQL.
+    pcs = run_pql(env, num_iters=num_iters, max_t=max_t, decimals=decimals, epsilon=epsilon, gamma=gamma)  # Run PQL.
 
     print_pcs(pcs)
     save_momdp(path_data, file, num_states, num_objectives, num_actions, num_successors, seed, transition_function,
