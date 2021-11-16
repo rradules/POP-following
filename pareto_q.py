@@ -1,230 +1,183 @@
 import argparse
-import datetime
-import pickle
+import itertools
 import gym
-import cv2
-import utils
 
 import numpy as np
-import tensorboardX as tb
-import matplotlib.pyplot as plt
 
 from collections import namedtuple
-from collections.abc import Iterable
-from pygmo import hypervolume
+from pymoo.factory import get_performance_indicator
 
-Log = namedtuple('Log', ['total_steps', 'episode', 'episode_step', 'reward'])
-
-
-class Agent(object):
-
-    def record_frame(self, episode, record_every, frames=None):
-        if not episode % record_every:
-            frame = self.env.render('rgb_array')
-            w, h = frame.shape[:2]
-            r = h / w
-            w = np.minimum(w, 100)
-            h = int(r * w)
-            frame = cv2.resize(frame, (h, w))
-            frame = np.expand_dims(frame, axis=0)
-            if frames is None:
-                return frame
-            else:
-                return np.append(frames, frame, axis=0)
-
-    def train(self, episodes, max_steps=float('inf'), logdir='runs/'):
-        self.writer = tb.SummaryWriter(logdir=logdir + datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
-        record_every = 50
-
-        total_steps = 0
-        for e_i in range(1, episodes + 1):
-            e_step = 0
-            e_reward = 0
-            res = self.start(log=Log(total_steps, e_i, e_step, e_reward))
-            frames = self.record_frame(e_i, record_every)
-            while not res['terminal'] and e_step < max_steps:
-                res = self.step(res, log=Log(total_steps, e_i, e_step, e_reward))
-                frames = self.record_frame(e_i, record_every, frames)
-
-                e_step += 1
-                total_steps += 1
-                e_reward += res['reward']
-            log = Log(total_steps, e_i, e_step, e_reward)
-            self.end(log=log, writer=self.writer)
-            print(log)
-            for k, v in log._asdict().items():
-                if isinstance(v, Iterable):
-                    for i, v_i in enumerate(v):
-                        self.writer.add_scalar(k + '_{}'.format(i), v_i, e_i)
-                else:
-                    self.writer.add_scalar(k, v, e_i)
-            if not e_i % record_every:
-                frames = np.expand_dims(np.moveaxis(frames, -1, 1), 0)
-                self.writer.add_video('episode_recording', frames, e_i)
-
-    def start(self, log=None):
-        raise NotImplementedError()
-
-    def step(self, params, log=None):
-        raise NotImplementedError()
-
-    def end(self, log=None, writer=None):
-        pass
+from utils import mkdir_p, get_non_dominated, get_best, print_pcs, save_momdp, save_pcs, save_training_data
 
 
-class ParetoQ(Agent):
-
-    def __init__(self, env, choose_action, ref_point, nO=2, gamma=1.):
-        self.env = env
-        self.choose_action = choose_action
-        self.gamma = gamma
-
-        self.ref_point = ref_point
-
-        self.non_dominated = [[[np.zeros(nO)] for _ in range(env.nA)] for _ in range(env.nS)]
-        self.avg_r = np.zeros((env.nS, env.nA, nO))
-        self.n_visits = np.zeros((env.nS, env.nA))
-        self.transitions = np.zeros((env.nS, env.nA, env.nS))
-
-    def start(self, log=None):
-        self.epsilon = 1.
-        state = self.env.reset()
-        return {'observation': state,
-                'terminal': False}
-
-    def compute_q_set(self, s):
-        q_set = []
-        for a in range(self.env.nA):
-            nd_sa = self.non_dominated[s][a]
-            rew = self.avg_r[s, a]
-            q_set.append([rew + self.gamma * nd for nd in nd_sa])
-        return np.array(q_set, dtype=object)
-
-    def update_non_dominated(self, s, a, s_n):
-        q_set_n = self.compute_q_set(s_n)
-        # update for all actions, flatten
-        solutions = np.concatenate(q_set_n, axis=0)
-        # append to current pareto front
-        # solutions = np.concatenate([solutions, self.non_dominated[s][a]])
-
-        # compute pareto front
-        self.non_dominated[s][a] = get_non_dominated(solutions)
-
-    def step(self, previous, log=None):
-        state = previous['observation']
-        q_set = self.compute_q_set(state)
-        action = self.choose_action(state, q_set, self.epsilon)
-        next_state, reward, terminal, _ = self.env.step(action)
-        # update non-dominated set
-        self.update_non_dominated(state, action, next_state)
-        # Calculate total transitions
-        total_transitions = self.transitions[state, action] * self.n_visits[state, action]
-        total_transitions[next_state] += 1
-        # Update visit count
-        self.n_visits[state, action] += 1
-        # Update transition function
-        self.transitions[state, action] = total_transitions / self.n_visits[state, action]
-        # update avg immediate reward
-        self.avg_r[state, action] += (reward - self.avg_r[state, action]) / self.n_visits[state, action]
-
-        self.epsilon *= 0.997
-        return {'observation': next_state,
-                'terminal': terminal,
-                'reward': reward}
-
-    def end(self, log=None, writer=None):
-
-        if writer is not None:
-            h_v = compute_hypervolume(self.compute_q_set(0), self.env.nA, self.ref_point)
-            writer.add_scalar('hypervolume', np.amax(h_v), log.episode)
-            fig = plt.figure()
-            if self.avg_r.shape[2] == 3:
-                ax = plt.axes(projection='3d')
-            pareto = np.concatenate(self.non_dominated[0])
-            if len(pareto):
-                # number of objectives
-                if pareto.shape[1] == 2:
-                    plt.plot(pareto[:, 0], pareto[:, 1], 'o', label='estimated pareto-front')
-                elif pareto.shape[1] == 3:
-                    ax.plot3D(pareto[:, 0], pareto[:, 1], pareto[:, 2], 'o')
-
-            plt.legend()
-            fig.canvas.draw()
-            # Now we can save it to a numpy array.
-            data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-            data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            data = np.rollaxis(data, -1, 0)
-
-            writer.add_image('pareto_front', data, log.episode)
-            plt.close(fig)
-
-    def evaluate(self, w=np.array([.5, .5])):
-
-        p = self.start()
-        state, done = p['observation'], p['terminal']
-        norm = np.array([124, 19])
-        i = np.ravel_multi_index((3, 5), self.env.shape)
-        qi = self.compute_q_set(i)
-        print([np.array(qi[a]) for a in range(4)])
-        while not done:
-            q = self.compute_q_set(state)
-            q_s = [np.amax(np.sum(q[a] * w / norm, axis=1)) for a in range(self.env.nA)]
-            action = np.random.choice(np.argwhere(q_s == np.amax(q_s)).flatten())
-            print(q_s, action)
-            state, reward, done, _ = self.env.step(action)
-
-        print(w, reward)
-
-
-def get_non_dominated(solutions):
-    is_efficient = np.ones(solutions.shape[0], dtype=bool)
-    for i, c in enumerate(solutions):
-        if is_efficient[i]:
-            # Remove dominated points, will also remove itself
-            is_efficient[is_efficient] = np.any(solutions[is_efficient] > c, axis=1)
-            # keep this solution as non-dominated
-            is_efficient[i] = 1
-
-    return solutions[is_efficient]
-
-
-def compute_hypervolume(q_set, nA, ref):
-    q_values = np.zeros(nA)
-    for i in range(nA):
-        # pygmo uses hv minimization,
-        # negate rewards to get costs
-        points = np.array(q_set[i]) * -1.
-        hv = hypervolume(points)
-        # use negative ref-point for minimization
-        q_values[i] = hv.compute(ref * -1)
-    return q_values
-
-
-def action_selection(state, q_set, epsilon, ref):
-    q_values = compute_hypervolume(q_set, q_set.shape[0], ref)
-
-    if np.random.rand() >= epsilon:
-        return np.random.choice(np.argwhere(q_values == np.amax(q_values)).flatten())
-    else:
-        return np.random.choice(range(q_set.shape[0]))
-
-
-if __name__ == '__main__':
-    gym.register(
+gym.register(
         id='DeepSeaTreasure-v0',
         entry_point='deep_sea_treasure:DeepSeaTreasureEnv')
 
-    env = gym.make('DeepSeaTreasure-v0')
-    ref_point = np.array([0, -25])
-    num_objectives = 2
-    agent = ParetoQ(env, lambda s, q, e: action_selection(s, q, e, ref_point), ref_point, nO=num_objectives, gamma=1.)
 
-    # env = gym.make('resource-gathering-v0')
-    # ref_point = np.array([-1, -1, -2])
-    # agent = ParetoQ(env, lambda s, q, e: action_selection(s, q, e, ref_point), ref_point, nO=3, gamma=0.96)
+class ParetoQ:
+    """
+    An implementation for a pareto Q learning agent that is able to deal with stochastic environments.
+    """
+    def __init__(self, num_states, num_actions, num_objectives, ref_point, gamma=0.8, epsilon=0.1, decimals=2):
+        self.num_actions = num_actions
+        self.num_states = num_states
+        self.num_objectives = num_objectives
 
-    logdir = 'runs/pareto-q/'
-    agent.train(10, logdir=logdir)
-    path_data = f'results/'
-    file = f'MPD_s{env.nS}_a{env.nA}_o{num_objectives}_ss{env.nS}_seed{-1}'
-    utils.save_vectors(agent.non_dominated, file, path_data, num_objectives)
+        self.gamma = gamma
+        self.epsilon = epsilon
+        self.decimals = decimals
+
+        self.hv = get_performance_indicator("hv", ref_point=-1*ref_point)  # Pymoo flips everything.
+
+        # Implemented as recommended by Van Moffaert et al. by substituting (s, a) R(s, a, s').
+        self.non_dominated = [[[{tuple(np.zeros(num_objectives))} for _ in range(num_states)] for _ in range(num_actions)] for _ in range(num_states)]
+        self.avg_r = np.zeros((num_states, num_actions, num_states, num_objectives))
+        self.transitions = np.zeros((num_states, num_actions, num_states))
+
+    def calc_q_set(self, state, action):
+        q_set = set()
+
+        total_transitions = np.sum(self.transitions[state, action])
+        if total_transitions == 0:
+            transition_probs = np.ones(self.num_states)
+        else:
+            transition_probs = self.transitions[state, action] / total_transitions
+        next_states = np.where(self.transitions[state, action, :] > 0)[0]  # Next states with prob > 0
+
+        next_sets = []
+        for next_state in next_states:
+            next_sets.append(list(self.non_dominated[state][action][next_state]))
+
+        cartesian_product = itertools.product(*next_sets)
+
+        for combination in cartesian_product:
+            expected_vec = np.zeros(self.num_objectives)
+            for idx, vec in enumerate(combination):
+                next_state = next_states[idx]
+                transition_prob = transition_probs[next_state]
+                expected_vec = expected_vec + transition_prob * (self.avg_r[state, action, next_state] + np.array(vec))
+            expected_vec = tuple(np.around(expected_vec, decimals=self.decimals))  # Round the future reward.
+            q_set.add(tuple(expected_vec))
+        return q_set
+
+    def select_action(self, state):
+        if np.random.uniform(0, 1) < self.epsilon:
+            return np.random.randint(self.num_actions)
+        else:
+            hypervolumes = []
+            for action in range(self.num_actions):
+                q_set = self.calc_q_set(state, action)
+                q_set = get_non_dominated(q_set)
+                hypervolume = self.hv.do(-1*np.array(list(q_set)))
+                hypervolumes.append(hypervolume)
+            print(np.max(hypervolumes))
+            return np.random.choice(np.argwhere(hypervolumes == np.max(hypervolumes)).flatten())
+
+    def update(self, state, action, next_state, r):
+        self.transitions[state, action, next_state] += 1
+        q_sets = []
+        for a in range(self.num_actions):
+            q_sets.append(self.calc_q_set(next_state, a))
+        self.non_dominated[state][action][next_state] = get_non_dominated(set().union(*q_sets))
+        self.avg_r[state, action, next_state] += (r - self.avg_r[state, action, next_state])/self.transitions[state, action, next_state]
+
+    def construct_pcs(self):
+        pcs = [[{tuple(np.zeros(self.num_objectives))} for _ in range(self.num_actions)] for _ in range(self.num_states)]
+        for state in range(self.num_states):
+            for action in range(self.num_actions):
+                pcs[state][action] = get_non_dominated(self.calc_q_set(state, action))
+        return pcs
+
+
+def run_pql(env, num_iters=100, max_t=20, decimals=3, epsilon=0.1, gamma=0.8):
+    dataset = []
+    agent = ParetoQ(num_states, num_actions, num_objectives, ref_point, gamma=gamma, epsilon=epsilon, decimals=decimals)
+
+    for i in range(num_iters):
+        print(f'Performing iteration {i}')
+        state = env.reset()
+        done = False
+        timestep = 0
+
+        while not done and timestep < max_t:
+            action = agent.select_action(state)
+            next_state, r, done, prob = env.step(action)
+            agent.update(state, action, next_state, r)
+            state = next_state
+            timestep += 1
+
+    pcs = agent.construct_pcs()
+    save_training_data(dataset, num_objectives, path_data, file)
+
+    return pcs
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-env', type=str, default='DeepSeaTreasure-v0', help="The environment to run PVI on.")
+    parser.add_argument('-states', type=int, default=10, help="The number of states. Only used with the random MOMDP.")
+    parser.add_argument('-obj', type=int, default=2, help="The number of objectives. Only used with the random MOMDP.")
+    parser.add_argument('-act', type=int, default=2, help="The number of actions. Only used with the random MOMDP.")
+    parser.add_argument('-suc', type=int, default=4, help="The number of successors. Only used with the random MOMDP.")
+    parser.add_argument('-noise', type=float, default=0, help="The stochasticity in state transitions.")
+    parser.add_argument('-seed', type=int, default=42, help="The seed for random number generation. ")
+    parser.add_argument('-num_iters', type=int, default=3000, help="The number of iterations to run PQL for.")
+    parser.add_argument('-max_t', type=int, default=100, help="The maximum timesteps per episode.")
+    parser.add_argument('-gamma', type=float, default=1, help="The discount factor for expected rewards.")
+    parser.add_argument('-epsilon', type=float, default=0.5, help="How much error we tolerate on each objective.")
+    parser.add_argument('-decimals', type=int, default=2, help="The number of decimals to include for each return.")
+    parser.add_argument('-dir', type=str, default='results', help='The directory to save all results to.')
+
+    args = parser.parse_args()
+
+    env_name = args.env
+
+    if env_name == 'RandomMOMDP-v0':
+        env = gym.make('RandomMOMDP-v0', nstates=args.states, nobjectives=args.obj, nactions=args.act, nsuccessor=args.suc, seed=args.seed)
+        num_states = env.observation_space.n
+        num_actions = env.action_space.n
+        num_objectives = env._nobjectives
+        num_successors = args.suc
+        transition_function = env._transition_function
+        reward_function = env._old_reward_function
+        ref_point = np.zeros(num_objectives)
+    elif env_name == 'RandomMOMDP-v1':
+        env = gym.make('RandomMOMDP-v0', nstates=args.states, nobjectives=args.obj, nactions=args.act, nsuccessor=args.suc, seed=args.seed)
+        num_states = env.observation_space.n
+        num_actions = env.action_space.n
+        num_objectives = env._nobjectives
+        num_successors = args.suc
+        transition_function = env._transition_function
+        reward_function = env._reward_function
+        ref_point = np.zeros(num_objectives)
+    else:
+        env = gym.make('DeepSeaTreasure-v0', seed=args.seed, noise=args.noise)
+        num_states = env.nS
+        num_actions = env.nA
+        num_objectives = 2
+        num_successors = env.nS
+        transition_function = env._transition_function
+        print(list(transition_function))
+        reward_function = env._reward_function
+        ref_point = np.array([0, -25])
+
+    seed = args.seed
+    gamma = args.gamma
+    epsilon = args.epsilon
+    decimals = args.decimals
+    num_iters = args.num_iters
+    novec = 'undefined'
+    np.random.seed(seed)
+    Data = namedtuple('Data', ['vs', 'N', 's', 'a', 'ns'])
+
+    path_data = args.dir
+    mkdir_p(path_data)
+    file = f'MPD_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}_novec{novec}'
+
+    pcs = run_pql(env, num_iters=num_iters, decimals=decimals, epsilon=epsilon, gamma=gamma)  # Run PQL.
+
+    print_pcs(pcs)
+    save_momdp(path_data, file, num_states, num_objectives, num_actions, num_successors, seed, transition_function,
+               reward_function, epsilon, gamma)
+    save_pcs(pcs, file, path_data, num_objectives)
