@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 
 from collections import namedtuple
-from utils import mkdir_p, get_non_dominated, check_converged, print_pcs, save_pcs, save_momdp, get_best
+from utils import mkdir_p, save_training_data, check_converged, print_pcs, save_pcs, save_momdp, get_best
 
 from gym.envs.registration import register
 
@@ -22,30 +22,6 @@ register(
         id='DeepSeaTreasure-v0',
         entry_point='deep_sea_treasure:DeepSeaTreasureEnv',
 )
-
-
-def save_training_data(dataset):
-    """
-    This function saves the dataset in a structured way for later use in training a neural network.
-    :param dataset: The created dataset from PVI.
-    :return: /
-    """
-    columns = ['s', 'a', 'ns']
-    columns.extend([f'N{i}' for i in range(num_objectives)])
-    columns.extend([f'vs{i}' for i in range(num_objectives)])
-
-    data = []
-
-    for instance in dataset:
-        s = [instance.s]
-        a = [instance.a]
-        ns = [instance.ns]
-        N = list(instance.N)
-        vs = list(instance.vs)
-        data.append(s + a + ns + N + vs)
-
-    df = pd.DataFrame(data, columns=columns)
-    df.to_csv(f'{path_data}/NN_{file}.csv', index=False)
 
 
 def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=30):
@@ -106,7 +82,7 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=30):
 
                 nd_vectors_update[state][action] = get_best(candidate_vectors, novec)  # Save ND for updating later.
         if check_converged(nd_vectors_update, nd_vectors, epsilon):  # Check if we converged already.
-            save_training_data(dataset)
+            save_training_data(dataset, num_objectives, path_data, file)
             break  # If converged, break from the while loop and save data
         else:
             nd_vectors = copy.deepcopy(nd_vectors_update)  # Else perform a deep copy an go again.

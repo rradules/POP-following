@@ -181,6 +181,33 @@ def save_momdp(path, file, num_states, num_objectives, num_actions, num_successo
     json.dump(info, open(f'{path}/{file}.json', "w"))
 
 
+def save_training_data(dataset, num_objectives, path_data, file):
+    """
+    This function saves the dataset in a structured way for later use in training a neural network.
+    :param dataset: The created dataset from PVI.
+    :param num_objectives: The number of objectives.
+    :param path_data: The path to the directory for saving the data.
+    :param file: The filename to save it as.
+    :return: /
+    """
+    columns = ['s', 'a', 'ns']
+    columns.extend([f'N{i}' for i in range(num_objectives)])
+    columns.extend([f'vs{i}' for i in range(num_objectives)])
+
+    data = []
+
+    for instance in dataset:
+        s = [instance.s]
+        a = [instance.a]
+        ns = [instance.ns]
+        N = list(instance.N)
+        vs = list(instance.vs)
+        data.append(s + a + ns + N + vs)
+
+    df = pd.DataFrame(data, columns=columns)
+    df.to_csv(f'{path_data}/NN_{file}.csv', index=False)
+
+
 def check_converged(new_nd_vectors, old_nd_vectors, epsilon):
     """
     This function checks if the PCS has converged.
