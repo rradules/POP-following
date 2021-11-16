@@ -24,7 +24,7 @@ register(
 )
 
 
-def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=30):
+def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=10):
     """
     This function will run the Pareto Value Iteration algorithm.
     :param decimals: number of decimals to which the value vector should be rounded.
@@ -38,7 +38,7 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=30):
     #dataset = []
     run = 0  # For printing purposes.
 
-    while True:  # We execute the algorithm until convergence.
+    while run < 1000:  # We execute the algorithm until convergence.
         print(f'Value Iteration number: {run}')
         dataset = []
 
@@ -82,7 +82,7 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=30):
 
                 nd_vectors_update[state][action] = get_best(candidate_vectors, novec)  # Save ND for updating later.
         if check_converged(nd_vectors_update, nd_vectors, epsilon):  # Check if we converged already.
-            save_training_data(dataset, num_objectives, path_data, file)
+            #save_training_data(dataset)
             break  # If converged, break from the while loop and save data
         else:
             nd_vectors = copy.deepcopy(nd_vectors_update)  # Else perform a deep copy an go again.
@@ -92,7 +92,7 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=30):
     elapsed_seconds = (end - start)
     print("Seconds elapsed: " + str(elapsed_seconds))
 
-    return nd_vectors_update
+    return nd_vectors_update, dataset
 
 
 if __name__ == '__main__':
@@ -151,8 +151,9 @@ if __name__ == '__main__':
     mkdir_p(path_data)
     file = f'MPD_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}_novec{novec}'
 
-    pcs = pvi(decimals=decimals, epsilon=epsilon, gamma=gamma, novec=novec)  # Run PVI.
+    pcs, NN_data = pvi(decimals=decimals, epsilon=epsilon, gamma=gamma, novec=novec)  # Run PVI.
 
-    print_pcs(pcs)
+    #print_pcs(pcs)
+    save_training_data(NN_data)
     save_momdp(path_data, file, num_states, num_objectives, num_actions, num_successors, seed, transition_function, reward_function, epsilon, gamma)
     save_pcs(pcs, file, path_data, num_objectives)
