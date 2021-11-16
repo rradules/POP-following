@@ -82,7 +82,7 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=10):
 
                 nd_vectors_update[state][action] = get_best(candidate_vectors, novec)  # Save ND for updating later.
         if check_converged(nd_vectors_update, nd_vectors, epsilon):  # Check if we converged already.
-            #save_training_data(dataset)
+            #save_training_data(dataset, num_objectives, path_data, file)
             break  # If converged, break from the while loop and save data
         else:
             nd_vectors = copy.deepcopy(nd_vectors_update)  # Else perform a deep copy an go again.
