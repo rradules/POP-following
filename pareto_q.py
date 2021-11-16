@@ -30,7 +30,7 @@ class ParetoQ:
 
         self.hv = get_performance_indicator("hv", ref_point=-1*ref_point)  # Pymoo flips everything.
 
-        # Implemented as recommended by Van Moffaert et al. by substituting (s, a) R(s, a, s').
+        # Implemented as recommended by Van Moffaert et al. by substituting (s, a) with (s, a, s').
         self.non_dominated = [[[{tuple(np.zeros(num_objectives))} for _ in range(num_states)] for _ in range(num_actions)] for _ in range(num_states)]
         self.avg_r = np.zeros((num_states, num_actions, num_states, num_objectives))
         self.transitions = np.zeros((num_states, num_actions, num_states))
@@ -38,11 +38,7 @@ class ParetoQ:
     def calc_q_set(self, state, action):
         q_set = set()
 
-        total_transitions = np.sum(self.transitions[state, action])
-        if total_transitions == 0:
-            transition_probs = np.ones(self.num_states)
-        else:
-            transition_probs = self.transitions[state, action] / total_transitions
+        transition_probs = self.transitions[state, action] / np.sum(self.transitions[state, action])
         next_states = np.where(self.transitions[state, action, :] > 0)[0]  # Next states with prob > 0
 
         next_sets = []
@@ -125,7 +121,7 @@ if __name__ == '__main__':
     parser.add_argument('-num_iters', type=int, default=3000, help="The number of iterations to run PQL for.")
     parser.add_argument('-max_t', type=int, default=100, help="The maximum timesteps per episode.")
     parser.add_argument('-gamma', type=float, default=1, help="The discount factor for expected rewards.")
-    parser.add_argument('-epsilon', type=float, default=0.5, help="How much error we tolerate on each objective.")
+    parser.add_argument('-epsilon', type=float, default=0.25, help="How much error we tolerate on each objective.")
     parser.add_argument('-decimals', type=int, default=2, help="The number of decimals to include for each return.")
     parser.add_argument('-dir', type=str, default='results', help='The directory to save all results to.')
 
@@ -158,7 +154,6 @@ if __name__ == '__main__':
         num_objectives = 2
         num_successors = env.nS
         transition_function = env._transition_function
-        print(list(transition_function))
         reward_function = env._reward_function
         ref_point = np.array([0, -25])
 
