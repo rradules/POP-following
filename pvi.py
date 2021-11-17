@@ -53,7 +53,7 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=10):
                     # We take the union of all state-action non dominated vectors.
                     # We then only keep the non dominated vectors.
                     # We cast the resulting set to a list for later processing.
-                    lv.append(list(get_best(set().union(*nd_vectors[next_state]), novec)))
+                    lv.append(list(get_best(set().union(*nd_vectors[next_state]), max_points=novec)))
 
                 # This cartesian product will contain tuples with a reward vector for each next state.
                 cartesian_product = itertools.product(*lv)
@@ -79,7 +79,7 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=10):
 
                     candidate_vectors.add(future_reward)  # Add this future reward as a candidate.
 
-                nd_vectors_update[state][action] = get_best(candidate_vectors, novec)  # Save ND for updating later.
+                nd_vectors_update[state][action] = get_best(candidate_vectors, max_points=novec)  # Save ND for updating later.
         if check_converged(nd_vectors_update, nd_vectors, epsilon):  # Check if we converged already.
             #save_training_data(dataset, num_objectives, path_data, file)
             break  # If converged, break from the while loop and save data
