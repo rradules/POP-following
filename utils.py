@@ -75,7 +75,7 @@ def crowding_distance_assignment(nd_array):
     return crowding_distances
 
 
-def get_best(candidates, max_points):
+def get_best(candidates, max_points=10):
     """
     This function gets the best points from the candidate set.
     :param candidates: The set of candidates.
