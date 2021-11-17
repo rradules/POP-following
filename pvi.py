@@ -65,18 +65,17 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=10):
                     for idx, next_state in enumerate(next_states):
                         transition_prob = transition_function[state, action, next_state]  # The transition probability.
                         reward = reward_function[state, action, next_state]  # The reward associated with this.
-                        future_vec = np.array(next_vectors[idx])  # The vector obtained in the next state.
-                        disc_future_reward = gamma * future_vec  # The discounted future reward.
+                        next_vector = np.array(next_vectors[idx])  # The vector obtained in the next state.
+                        disc_future_reward = gamma * next_vector  # The discounted future reward.
                         contribution = transition_prob * (reward + disc_future_reward)  # The contribution of this vector.
                         future_reward += contribution  # Add it to the future reward.
-                        N += transition_prob * future_vec  # Add the component of V from next value vectors to N.
+                        N += transition_prob * next_vector  # Add the component of V from next value vectors to N.
 
                     future_reward = tuple(np.around(future_reward, decimals=decimals))  # Round the future reward.
                     N = tuple(np.around(N, decimals=decimals))  # Round N.
 
-                    for idx, next_state in enumerate(next_states):  # Add the generated vectors to the dataset.
-                        follow_vec = next_vectors[idx]
-                        dataset.append(Data(follow_vec, N, state, action, next_state))
+                    for next_state, next_vector in zip(next_states, next_vectors):  # Add the trajectory to the dataset.
+                        dataset.append(Data(next_vector, N, state, action, next_state))
 
                     candidate_vectors.add(future_reward)  # Add this future reward as a candidate.
 
