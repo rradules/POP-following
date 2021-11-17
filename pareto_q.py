@@ -36,6 +36,12 @@ class ParetoQ:
         self.transitions = np.zeros((num_states, num_actions, num_states))
 
     def calc_q_set(self, state, action):
+        """
+        This function calculates a complete Q-set for a given state and action.
+        :param state: The current state.
+        :param action: The selected action.
+        :return: A Q(s, a) set.
+        """
         q_set = set()
 
         transition_probs = self.transitions[state, action] / np.sum(self.transitions[state, action])
@@ -47,17 +53,23 @@ class ParetoQ:
 
         cartesian_product = itertools.product(*next_sets)
 
-        for combination in cartesian_product:
+        for next_vectors in cartesian_product:
             expected_vec = np.zeros(self.num_objectives)
-            for idx, vec in enumerate(combination):
+            for idx, next_vector in enumerate(next_vectors):
                 next_state = next_states[idx]
                 transition_prob = transition_probs[next_state]
-                expected_vec += transition_prob * (self.avg_r[state, action, next_state] + self.gamma * np.array(vec))
+                disc_future_reward = self.gamma * np.array(next_vector)
+                expected_vec += transition_prob * (self.avg_r[state, action, next_state] + disc_future_reward)
             expected_vec = tuple(np.around(expected_vec, decimals=self.decimals))  # Round the future reward.
             q_set.add(tuple(expected_vec))
         return q_set
 
     def select_action(self, state):
+        """
+        This function selects an action using epsilon greedy on the hypervolume metric given the current state.
+        :param state: The current state.
+        :return: The action to take.
+        """
         if np.random.uniform(0, 1) < self.epsilon:
             return np.random.randint(self.num_actions)
         else:
@@ -71,6 +83,14 @@ class ParetoQ:
             return np.random.choice(np.argwhere(hypervolumes == np.max(hypervolumes)).flatten())
 
     def update(self, state, action, next_state, r):
+        """
+        This function updates the agent.
+        :param state: The previous state.
+        :param action: The action that was selected.
+        :param next_state: The state that the agent ended up in.
+        :param r: The obtained reward.
+        :return: /
+        """
         self.transitions[state, action, next_state] += 1
         q_sets = []
         for a in range(self.num_actions):
@@ -79,15 +99,60 @@ class ParetoQ:
         self.avg_r[state, action, next_state] += (r - self.avg_r[state, action, next_state])/self.transitions[state, action, next_state]
 
     def construct_pcs(self):
+        """
+        This function constructs the final PCS.
+        :return: The PCS.
+        """
         pcs = [[{tuple(np.zeros(self.num_objectives))} for _ in range(self.num_actions)] for _ in range(self.num_states)]
         for state in range(self.num_states):
             for action in range(self.num_actions):
                 pcs[state][action] = get_non_dominated(self.calc_q_set(state, action))
         return pcs
 
+    def construct_nn_dataset(self):
+        """
+        This function constructs a NN dataset with training samples generated from the learned Q sets.
+        :return: The trajectory dataset.
+        """
+        dataset = []
+
+        for state in range(self.num_states):
+            for action in range(self.num_actions):
+                transition_probs = self.transitions[state, action] / np.sum(self.transitions[state, action])
+                next_states = np.where(self.transitions[state, action, :] > 0)[0]  # Next states with prob > 0
+
+                next_sets = []
+                for next_state in next_states:
+                    next_sets.append(list(self.non_dominated[state][action][next_state]))
+
+                cartesian_product = itertools.product(*next_sets)
+
+                for next_vectors in cartesian_product:
+                    N = np.zeros(self.num_objectives)
+                    for idx, next_vector in enumerate(next_vectors):
+                        print(next_vector)
+                        next_state = next_states[idx]
+                        transition_prob = transition_probs[next_state]
+                        N += transition_prob * np.array(next_vector)
+
+                    for next_state, next_vector in zip(next_states, next_vectors):  # Add the trajectory to the dataset.
+                        print(next_vector, N, self.avg_r[state, action, next_state])
+                        dataset.append(Data(next_vector, N, state, action, next_state))
+
+        return dataset
+
 
 def run_pql(env, num_iters=100, max_t=20, decimals=3, epsilon=0.1, gamma=0.8):
-    dataset = []
+    """
+    This function runs PQL.
+    :param env: The environment the run PQL in.
+    :param num_iters: The number of iterations to run PQL for.
+    :param max_t: The maximum timestep per iteration.
+    :param decimals: The maximum number of decimals used for rewards.
+    :param epsilon: The exploration parameter.
+    :param gamma: The discount factor.
+    :return: The PCS and NN dataset.
+    """
     agent = ParetoQ(num_states, num_actions, num_objectives, ref_point, gamma=gamma, epsilon=epsilon, decimals=decimals)
 
     for i in range(num_iters):
@@ -104,9 +169,9 @@ def run_pql(env, num_iters=100, max_t=20, decimals=3, epsilon=0.1, gamma=0.8):
             timestep += 1
 
     pcs = agent.construct_pcs()
-    save_training_data(dataset, num_objectives, path_data, file)
+    nn_dataset = agent.construct_nn_dataset()
 
-    return pcs
+    return pcs, nn_dataset
 
 
 if __name__ == '__main__':
@@ -118,7 +183,7 @@ if __name__ == '__main__':
     parser.add_argument('-suc', type=int, default=4, help="The number of successors. Only used with the random MOMDP.")
     parser.add_argument('-noise', type=float, default=0, help="The stochasticity in state transitions.")
     parser.add_argument('-seed', type=int, default=1, help="The seed for random number generation. ")
-    parser.add_argument('-num_iters', type=int, default=3000, help="The number of iterations to run PQL for.")
+    parser.add_argument('-num_iters', type=int, default=1000, help="The number of iterations to run PQL for.")
     parser.add_argument('-max_t', type=int, default=1000, help="The maximum timesteps per episode.")
     parser.add_argument('-gamma', type=float, default=1, help="The discount factor for expected rewards.")
     parser.add_argument('-epsilon', type=float, default=1, help="How much error we tolerate on each objective.")
@@ -171,9 +236,10 @@ if __name__ == '__main__':
     mkdir_p(path_data)
     file = f'MPD_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}_novec{novec}'
 
-    pcs = run_pql(env, num_iters=num_iters, max_t=max_t, decimals=decimals, epsilon=epsilon, gamma=gamma)  # Run PQL.
+    pcs, dataset = run_pql(env, num_iters=num_iters, max_t=max_t, decimals=decimals, epsilon=epsilon, gamma=gamma)  # Run PQL.
 
     print_pcs(pcs)
     save_momdp(path_data, file, num_states, num_objectives, num_actions, num_successors, seed, transition_function,
                reward_function, epsilon, gamma)
     save_pcs(pcs, file, path_data, num_objectives)
+    save_training_data(dataset, num_objectives, path_data, file)
