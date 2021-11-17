@@ -19,7 +19,7 @@ class ParetoQ:
     """
     An implementation for a pareto Q learning agent that is able to deal with stochastic environments.
     """
-    def __init__(self, num_states, num_actions, num_objectives, ref_point, gamma=0.8, epsilon=0.1, decimals=2):
+    def __init__(self, num_states, num_actions, num_objectives, ref_point, gamma=0.8, epsilon=0.1, decimals=2, novec=30):
         self.num_actions = num_actions
         self.num_states = num_states
         self.num_objectives = num_objectives
@@ -27,6 +27,7 @@ class ParetoQ:
         self.gamma = gamma
         self.epsilon = epsilon
         self.decimals = decimals
+        self.novec = novec
 
         self.hv = get_performance_indicator("hv", ref_point=-1*ref_point)  # Pymoo flips everything.
 
@@ -44,7 +45,7 @@ class ParetoQ:
         """
         q_set = set()
 
-        transition_probs = self.transitions[state, action] / np.sum(self.transitions[state, action])
+        transition_probs = self.transitions[state, action] / max(1, np.sum(self.transitions[state, action]))
         next_states = np.where(self.transitions[state, action, :] > 0)[0]  # Next states with prob > 0
 
         next_sets = []
@@ -79,7 +80,6 @@ class ParetoQ:
                 q_set = get_non_dominated(q_set)
                 hypervolume = self.hv.do(-1*np.array(list(q_set)))
                 hypervolumes.append(hypervolume)
-            print(np.max(hypervolumes))
             return np.random.choice(np.argwhere(hypervolumes == np.max(hypervolumes)).flatten())
 
     def update(self, state, action, next_state, r):
@@ -95,7 +95,7 @@ class ParetoQ:
         q_sets = []
         for a in range(self.num_actions):
             q_sets.append(self.calc_q_set(next_state, a))
-        self.non_dominated[state][action][next_state] = get_non_dominated(set().union(*q_sets))
+        self.non_dominated[state][action][next_state] = get_best(set().union(*q_sets), max_points=self.novec)
         self.avg_r[state, action, next_state] += (r - self.avg_r[state, action, next_state])/self.transitions[state, action, next_state]
 
     def construct_pcs(self):
@@ -118,7 +118,7 @@ class ParetoQ:
 
         for state in range(self.num_states):
             for action in range(self.num_actions):
-                transition_probs = self.transitions[state, action] / np.sum(self.transitions[state, action])
+                transition_probs = self.transitions[state, action] / max(1, np.sum(self.transitions[state, action]))
                 next_states = np.where(self.transitions[state, action, :] > 0)[0]  # Next states with prob > 0
 
                 next_sets = []
@@ -130,19 +130,17 @@ class ParetoQ:
                 for next_vectors in cartesian_product:
                     N = np.zeros(self.num_objectives)
                     for idx, next_vector in enumerate(next_vectors):
-                        print(next_vector)
                         next_state = next_states[idx]
                         transition_prob = transition_probs[next_state]
                         N += transition_prob * np.array(next_vector)
 
                     for next_state, next_vector in zip(next_states, next_vectors):  # Add the trajectory to the dataset.
-                        print(next_vector, N, self.avg_r[state, action, next_state])
                         dataset.append(Data(next_vector, N, state, action, next_state))
 
         return dataset
 
 
-def run_pql(env, num_iters=100, max_t=20, decimals=3, epsilon=0.1, gamma=0.8):
+def run_pql(env, num_iters=100, max_t=20, decimals=3, epsilon=0.1, gamma=0.8, novec=30):
     """
     This function runs PQL.
     :param env: The environment the run PQL in.
@@ -151,9 +149,10 @@ def run_pql(env, num_iters=100, max_t=20, decimals=3, epsilon=0.1, gamma=0.8):
     :param decimals: The maximum number of decimals used for rewards.
     :param epsilon: The exploration parameter.
     :param gamma: The discount factor.
+    :param novec: The maximum number of vectors per set.
     :return: The PCS and NN dataset.
     """
-    agent = ParetoQ(num_states, num_actions, num_objectives, ref_point, gamma=gamma, epsilon=epsilon, decimals=decimals)
+    agent = ParetoQ(num_states, num_actions, num_objectives, ref_point, gamma=gamma, epsilon=epsilon, decimals=decimals, novec=novec)
 
     for i in range(num_iters):
         print(f'Performing iteration {i}')
@@ -181,14 +180,15 @@ if __name__ == '__main__':
     parser.add_argument('-obj', type=int, default=2, help="The number of objectives. Only used with the random MOMDP.")
     parser.add_argument('-act', type=int, default=2, help="The number of actions. Only used with the random MOMDP.")
     parser.add_argument('-suc', type=int, default=4, help="The number of successors. Only used with the random MOMDP.")
-    parser.add_argument('-noise', type=float, default=0, help="The stochasticity in state transitions.")
+    parser.add_argument('-noise', type=float, default=0.1, help="The stochasticity in state transitions.")
     parser.add_argument('-seed', type=int, default=1, help="The seed for random number generation. ")
-    parser.add_argument('-num_iters', type=int, default=1000, help="The number of iterations to run PQL for.")
+    parser.add_argument('-num_iters', type=int, default=500, help="The number of iterations to run PQL for.")
     parser.add_argument('-max_t', type=int, default=1000, help="The maximum timesteps per episode.")
     parser.add_argument('-gamma', type=float, default=1, help="The discount factor for expected rewards.")
-    parser.add_argument('-epsilon', type=float, default=1, help="How much error we tolerate on each objective.")
-    parser.add_argument('-decimals', type=int, default=2, help="The number of decimals to include for each return.")
+    parser.add_argument('-epsilon', type=float, default=0.5, help="How much error we tolerate on each objective.")
+    parser.add_argument('-decimals', type=int, default=1, help="The number of decimals to include for each return.")
     parser.add_argument('-dir', type=str, default='results', help='The directory to save all results to.')
+    parser.add_argument('-novec', type=int, default=10, help='The number of best vectors to keep.')
 
     args = parser.parse_args()
 
@@ -228,7 +228,7 @@ if __name__ == '__main__':
     decimals = args.decimals
     num_iters = args.num_iters
     max_t = args.max_t
-    novec = 'undefined'
+    novec = args.novec
     np.random.seed(seed)
     Data = namedtuple('Data', ['vs', 'N', 's', 'a', 'ns'])
 
@@ -236,7 +236,7 @@ if __name__ == '__main__':
     mkdir_p(path_data)
     file = f'MPD_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}_novec{novec}'
 
-    pcs, dataset = run_pql(env, num_iters=num_iters, max_t=max_t, decimals=decimals, epsilon=epsilon, gamma=gamma)  # Run PQL.
+    pcs, dataset = run_pql(env, num_iters=num_iters, max_t=max_t, decimals=decimals, epsilon=epsilon, gamma=gamma, novec=novec)  # Run PQL.
 
     print_pcs(pcs)
     save_momdp(path_data, file, num_states, num_objectives, num_actions, num_successors, seed, transition_function,
