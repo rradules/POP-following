@@ -110,7 +110,7 @@ if __name__ == '__main__':
     parser.add_argument('-suc', type=int, default=4, help="The number of successors. Only used with the random MOMDP.")
     parser.add_argument('-noise', type=float, default=0.0, help="The stochasticity in state transitions.")
     parser.add_argument('-seed', type=int, default=42, help="The seed for random number generation. ")
-    parser.add_argument('-num_iters', type=int, default=2, help="The maximum number of iterations to run PVI for.")
+    parser.add_argument('-num_iters', type=int, default=10000, help="The maximum number of iterations to run PVI for.")
     parser.add_argument('-gamma', type=float, default=0.8, help="The discount factor for expected rewards.")
     parser.add_argument('-epsilon', type=float, default=0.1, help="How much error we tolerate on each objective.")
     parser.add_argument('-decimals', type=int, default=2, help="The number of decimals to include for each return.")
