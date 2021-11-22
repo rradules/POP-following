@@ -11,6 +11,11 @@ from utils import mkdir_p, get_non_dominated, get_best, print_pcs, save_momdp, s
 
 
 gym.register(
+        id='RandomMOMDP-v0',
+        entry_point='randommomdp:RandomMOMDP',
+)
+
+gym.register(
         id='DeepSeaTreasure-v0',
         entry_point='deep_sea_treasure:DeepSeaTreasureEnv')
 
@@ -163,6 +168,7 @@ def run_pql(env, num_iters=100, max_t=20, decimals=3, epsilon=0.1, gamma=0.8, no
         while not done and timestep < max_t:
             action = agent.select_action(state)
             next_state, r, done, prob = env.step(action)
+            print(next_state, r, done, prob)
             agent.update(state, action, next_state, r)
             state = next_state
             timestep += 1
