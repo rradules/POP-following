@@ -83,6 +83,10 @@ def get_best(candidates, max_points=10):
     :return: A non dominated set that is potentially further pruned using crowding distance.
     """
     non_dominated = get_non_dominated(candidates)  # Get the non dominated points.
+
+    if max_points is None:  # If we want to keep everything return the non-dominated vectors already.
+        return non_dominated
+
     points_to_remove = len(non_dominated) - max_points  # Calculate the number of points left to remove.
 
     if points_to_remove > 0:  # If we still need to discard points.

@@ -24,9 +24,10 @@ register(
 )
 
 
-def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=10):
+def pvi(max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10):
     """
     This function will run the Pareto Value Iteration algorithm.
+    :param max_iter: The maximum number of iterations to run PVI for.
     :param decimals: number of decimals to which the value vector should be rounded.
     :param epsilon: closeness to PCS.
     :param gamma: discount factor.
@@ -35,10 +36,12 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=10):
     start = time.time()
     nd_vectors = [[{tuple(np.zeros(num_objectives))} for _ in range(num_actions)] for _ in range(num_states)]  # Q-set
     nd_vectors_update = copy.deepcopy(nd_vectors)
-    #dataset = []
     run = 0  # For printing purposes.
 
-    while run < 1000:  # We execute the algorithm until convergence.
+    last_iter = max_iter - 1
+    is_last = False
+
+    while True:  # We execute the algorithm until convergence.
         print(f'Value Iteration number: {run}')
         dataset = []
 
@@ -53,7 +56,7 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=10):
                     # We take the union of all state-action non dominated vectors.
                     # We then only keep the non dominated vectors.
                     # We cast the resulting set to a list for later processing.
-                    lv.append(list(get_best(set().union(*nd_vectors[next_state]), max_points=novec)))
+                    lv.append(list(get_best(set().union(*nd_vectors[next_state]), max_points=max_vec)))
 
                 # This cartesian product will contain tuples with a reward vector for each next state.
                 cartesian_product = itertools.product(*lv)
@@ -79,13 +82,17 @@ def pvi(decimals=4, epsilon=0.05, gamma=0.8, novec=10):
 
                     candidate_vectors.add(future_reward)  # Add this future reward as a candidate.
 
-                nd_vectors_update[state][action] = get_best(candidate_vectors, max_points=novec)  # Save ND for updating later.
+                nd_vectors_update[state][action] = get_best(candidate_vectors, max_points=max_vec)  # Save ND for updating later.
+        if is_last:
+            break  # If we performed the last iteration, break from the while loop.
         if check_converged(nd_vectors_update, nd_vectors, epsilon):  # Check if we converged already.
-            #save_training_data(dataset, num_objectives, path_data, file)
-            break  # If converged, break from the while loop and save data
+            max_vec = None  # Save everything in the last iteration.
+            is_last = True
         else:
             nd_vectors = copy.deepcopy(nd_vectors_update)  # Else perform a deep copy an go again.
             run += 1
+            if run >= last_iter:
+                is_last = True
 
     end = time.time()
     elapsed_seconds = (end - start)
