@@ -178,7 +178,7 @@ def save_momdp(path, file, num_states, num_objectives, num_actions, num_successo
         'epsilon': epsilon,
         'gamma': gamma
     }
-    json.dump(info, open(f'{path}/{file}.json', "w"))
+    json.dump(info, open(f'{path}/MOMDP_{file}.json', "w"))
 
 
 def save_training_data(dataset, num_objectives, path_data, file):

@@ -234,7 +234,7 @@ if __name__ == '__main__':
 
     path_data = args.dir
     mkdir_p(path_data)
-    file = f'MPD_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}_novec{novec}'
+    file = f'PQL_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}_novec{novec}'
 
     pcs, dataset = run_pql(env, num_iters=num_iters, max_t=max_t, decimals=decimals, epsilon=epsilon, gamma=gamma, novec=novec)  # Run PQL.
 

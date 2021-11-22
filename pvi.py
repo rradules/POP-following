@@ -148,7 +148,7 @@ if __name__ == '__main__':
 
     path_data = args.dir
     mkdir_p(path_data)
-    file = f'MPD_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}_novec{novec}'
+    file = f'PVI_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}_novec{novec}'
 
     pcs, NN_data = pvi(decimals=decimals, epsilon=epsilon, gamma=gamma, novec=novec)  # Run PVI.
 
