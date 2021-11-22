@@ -110,6 +110,7 @@ if __name__ == '__main__':
     parser.add_argument('-suc', type=int, default=4, help="The number of successors. Only used with the random MOMDP.")
     parser.add_argument('-noise', type=float, default=0.0, help="The stochasticity in state transitions.")
     parser.add_argument('-seed', type=int, default=42, help="The seed for random number generation. ")
+    parser.add_argument('-num_iters', type=int, default=2, help="The maximum number of iterations to run PVI for.")
     parser.add_argument('-gamma', type=float, default=0.8, help="The discount factor for expected rewards.")
     parser.add_argument('-epsilon', type=float, default=0.1, help="How much error we tolerate on each objective.")
     parser.add_argument('-decimals', type=int, default=2, help="The number of decimals to include for each return.")
@@ -150,6 +151,7 @@ if __name__ == '__main__':
     epsilon = args.epsilon
     decimals = args.decimals
     novec = args.novec
+    num_iters = args.num_iters
     np.random.seed(seed)
     Data = namedtuple('Data', ['vs', 'N', 's', 'a', 'ns'])
 
@@ -157,9 +159,8 @@ if __name__ == '__main__':
     mkdir_p(path_data)
     file = f'PVI_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}_novec{novec}'
 
-    pcs, NN_data = pvi(decimals=decimals, epsilon=epsilon, gamma=gamma, novec=novec)  # Run PVI.
+    pcs, dataset = pvi(max_iter=num_iters, decimals=decimals, epsilon=epsilon, gamma=gamma, max_vec=novec)  # Run PVI.
 
-    #print_pcs(pcs)
-    save_training_data(NN_data)
+    save_training_data(dataset, num_objectives, path_data, file)
     save_momdp(path_data, file, num_states, num_objectives, num_actions, num_successors, seed, transition_function, reward_function, epsilon, gamma)
     save_pcs(pcs, file, path_data, num_objectives)
