@@ -63,9 +63,9 @@ class RandomMOMDP(gym.Env):
 
     def step(self, action):
         # Change state using the transition function
-        rewards = self._reward_function[self._state, action]
-
-        self._state = np.random.choice(self._nstates, p=self._transition_function[self._state, action])
+        next_state = np.random.choice(self._nstates, p=self._transition_function[self._state, action])
+        rewards = self._reward_function[self._state, action, next_state]
+        self._state = next_state
         self._timestep += 1
 
         # Return the current state, a reward and whether the episode terminates
