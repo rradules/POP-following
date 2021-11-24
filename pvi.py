@@ -34,6 +34,7 @@ def pvi(max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10):
     :return: A set of non-dominated vectors per state in the MOMDP.
     """
     start = time.time()
+    dataset = []
     nd_vectors = [[{tuple(np.zeros(num_objectives))} for _ in range(num_actions)] for _ in range(num_states)]  # Q-set
     nd_vectors_update = copy.deepcopy(nd_vectors)
     run = 0  # For printing purposes.
@@ -43,7 +44,6 @@ def pvi(max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10):
 
     while True:  # We execute the algorithm until convergence.
         print(f'Value Iteration number: {run}')
-        dataset = []
 
         for state in range(num_states):  # Loop over all states.
             print(f'Looping over state {state}')
@@ -77,8 +77,9 @@ def pvi(max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10):
                     future_reward = tuple(np.around(future_reward, decimals=decimals))  # Round the future reward.
                     N = tuple(np.around(N, decimals=decimals))  # Round N.
 
-                    for next_state, next_vector in zip(next_states, next_vectors):  # Add the trajectory to the dataset.
-                        dataset.append(Data(next_vector, N, state, action, next_state))
+                    if is_last:
+                        for next_state, next_vector in zip(next_states, next_vectors):  # Add the trajectory to the dataset.
+                            dataset.append(Data(next_vector, N, state, action, next_state))
 
                     candidate_vectors.add(future_reward)  # Add this future reward as a candidate.
 
