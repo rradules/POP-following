@@ -18,13 +18,14 @@ plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
 if __name__ == '__main__':
 
-    params = {'states': 20, 'obj': 2, 'act': 3, 'suc': 7, 'seed': 42, 'exp_seed': 2, 'opt': 'ils', 'reps': 10}
+    params = {'method': 'PQL', 'novec': 20, 'states': 10, 'obj': 2, 'act': 2, \
+              'suc': 4, 'seed': 42, 'exp_seed': 1, 'opt': 'ils', 'reps': 10}
 
     path_data = f'results/'
     path_plots = f'plots/'
     mkdir_p(path_plots)
-    file = f'MPD_s{params["states"]}_a{params["act"]}_o{params["obj"]}_' \
-           f'ss{params["suc"]}_seed{params["seed"]}_exp{params["exp_seed"]}'
+    file = f'{params["method"]}_s{params["states"]}_a{params["act"]}_o{params["obj"]}_' \
+           f'ss{params["suc"]}_seed{params["seed"]}_novec{params["novec"]}_exp{params["exp_seed"]}'
 
     with open(f'{path_data}results_{params["opt"]}_{file}_reps{params["reps"]}.json', "r") as read_file:
         info = json.load(read_file)
@@ -32,7 +33,7 @@ if __name__ == '__main__':
 
     results = pd.read_csv(f'{path_data}results_all_{file}_reps{params["reps"]}.csv')
 
-    for opt_str in ['nn', 'ls', 'mls', 'ils']:
+    for opt_str in ['nn', 'ls', 'mls', 'ils']: #['nn', 'ls', 'mls', 'ils']
         val_mean = results[['Value0', 'Value1']].loc[results['Method'] == opt_str].mean(axis=0).values
         val_diff = v0 - val_mean
         print(opt_str, max(0, max(val_diff)))
@@ -44,7 +45,7 @@ if __name__ == '__main__':
     results.replace('mls', 'MLS', inplace=True)
     ax = sns.barplot(x='Method', y='Runtime', data=results, ci='sd')
     ax.set(ylabel='Average runtime (s)')
-    ax.set_ylim(0, 23)
+    ax.set_ylim(0, 10)
     for p in ax.patches:
         ax.annotate(format(p.get_height(), '.1f'),
                        (p.get_x() + p.get_width() / 2., p.get_height()+2),

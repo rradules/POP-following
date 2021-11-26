@@ -41,18 +41,21 @@ if __name__ == '__main__':
     parser.add_argument('-act', type=int, default=2, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
+    parser.add_argument('-method', type=str, default='PVI', help="method")
+    parser.add_argument('-novec', type=int, default=20, help="number of vectors")
 
     args = parser.parse_args()
 
     path_data = f'results/'
-    file = f'MPD_s{args.states}_a{args.act}_o{args.obj}_ss{args.suc}_seed{args.seed}'
+    file = f's{args.states}_a{args.act}_o{args.obj}_ss{args.suc}_seed{args.seed}_novec{args.novec}'
 
     num_states = args.states
     num_actions = args.act
     num_objectives = args.obj
+    method = args.method
 
     # Load training data
-    data = pd.read_csv(f'{path_data}ND_NN_{file}.csv')
+    data = pd.read_csv(f'{path_data}NN_{method}_{file}.csv')
 
     # Not pretty normalisation for states and actions
     data['s'] = data['s'].values/num_states
@@ -115,4 +118,4 @@ if __name__ == '__main__':
                 print(f'Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f}) \t Saving The Model')
                 min_valid_loss = valid_loss
                 # Saving State Dict
-                torch.save(model.state_dict(), f'{path_data}model_{file}.pth')
+                torch.save(model.state_dict(), f'{path_data}model_{method}_{file}.pth')

@@ -72,7 +72,7 @@ def eval_POP_NN(env, s_prev, a_prev, v_prev):
 
     # TODO: layer size of the NN as argument?
     model = POP_NN([d_in, 16, 8, 4, d_out])
-    model.load_state_dict(torch.load(f'{path_data}model_{file}.pth'))
+    model.load_state_dict(torch.load(f'{path_data}model_{method}_{file}.pth'))
     model.eval()
     ret_vector = np.zeros(num_objectives)
     cur_disc = 1
@@ -110,6 +110,8 @@ if __name__ == '__main__':
     parser.add_argument('-exp_seed', type=int, default=1, help="experiment seed")
     parser.add_argument('-optimiser', type=str, default='nn', help="Optimiser")
     parser.add_argument('-reps', type=int, default=10, help="Reps")
+    parser.add_argument('-novec', type=int, default=20, help="No of vectors")
+    parser.add_argument('-method', type=str, default='PVI', help="Method")
 
     args = parser.parse_args()
 
@@ -131,9 +133,11 @@ if __name__ == '__main__':
     num_states = env.observation_space.n
     num_actions = env.action_space.n
     num_objectives = args.obj
+    novec = args.novec
+    method = args.method
 
     path_data = f'results/'
-    file = f'MPD_s{args.states}_a{args.act}_o{args.obj}_ss{args.suc}_seed{args.seed}'
+    file = f's{args.states}_a{args.act}_o{args.obj}_ss{args.suc}_seed{args.seed}_novec{novec}'
 
     num_states = args.states
     num_actions = args.act
@@ -143,13 +147,13 @@ if __name__ == '__main__':
 
     gamma = 0.8  # Discount factor
 
-    with open(f'{path_data}{file}.json', "r") as read_file:
+    with open(f'{path_data}MOMDP_{method}_{file}.json', "r") as read_file:
         env_info = json.load(read_file)
 
     transition_function = env_info['transition']
     reward_function = env_info['reward']
 
-    pcs = pd.read_csv(f'{path_data}ND_PCS_{file}.csv')
+    pcs = pd.read_csv(f'{path_data}PCS_{method}_{file}.csv')
 
     pcs[objective_columns] = pcs[objective_columns].apply(pd.to_numeric)
     pcs[['Action', 'State']] = pcs[['Action', 'State']].astype('int32')
@@ -176,57 +180,59 @@ if __name__ == '__main__':
     lsreps = args.reps
     print(f'Running {opt_str} with {lsreps} repetitions.')
     #  ['nn', 'ls', 'mls', 'ils']
-    # for opt_str in ['nn', 'ls', 'mls', 'ils']:
-    if opt_str == 'nn':
-        acc = np.array([0.0, 0.0])
-        for x in range(times):
-            start = time.time()
-            env.reset()
-            env._state = s0
-            returns = eval_POP_NN(env, s0, a0, v0)
-            # print(f'{x+1}: {returns}', flush=True)
-            end = time.time()
-            elapsed_seconds = (end - start)
-            acc = acc + returns
-            results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
+    for opt_str in ['nn', 'ls', 'mls', 'ils']:
+        if opt_str == 'nn':
+            acc = np.array([0.0, 0.0])
+            for x in range(times):
+                start = time.time()
+                env.reset()
+                env._state = s0
+                returns = eval_POP_NN(env, s0, a0, v0)
+                # print(f'{x+1}: {returns}', flush=True)
+                end = time.time()
+                elapsed_seconds = (end - start)
+                acc = acc + returns
+                results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
 
-        av = acc / times
-        diff = v0 - av
-        l = np.linalg.norm(v0 - av)
-        print(f'{opt_str}: {l}, {diff}, vec={av}')
+            av = acc / times
+            diff = v0 - av
+            l = np.linalg.norm(v0 - av)
+            print(f'{opt_str}: {l}, {diff}, vec={av}')
 
-    else:
-        if opt_str == 'ls':
-            optimiser = popf_local_search
-        elif opt_str == 'mls':
-            func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=1)
-            optimiser = func
-        elif opt_str == 'ils':
-            func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=0.3)
-            optimiser = func
+        else:
+            if opt_str == 'ls':
+                optimiser = popf_local_search
+            elif opt_str == 'mls':
+                func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=1)
+                optimiser = func
+            elif opt_str == 'ils':
+                func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=0.3)
+                optimiser = func
 
-        acc = np.array([0.0, 0.0])
-        for x in range(times):
-            start = time.time()
-            env.reset()
-            env._state = s0
-            returns = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
-            #print(f'{x+1}: {returns}', flush=True)
-            end = time.time()
-            elapsed_seconds = (end - start)
-            acc = acc + returns
-            results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
+            acc = np.array([0.0, 0.0])
+            for x in range(times):
+                start = time.time()
+                env.reset()
+                env._state = s0
+                returns = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
+                #print(f'{x+1}: {returns}', flush=True)
+                end = time.time()
+                elapsed_seconds = (end - start)
+                acc = acc + returns
+                results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
 
-        av = acc/times
-        diff = v0 - av
-        l = np.linalg.norm(v0 - av)
-        print(f'{opt_str}: {l}, {diff}, vec={av}')
+            av = acc/times
+            diff = v0 - av
+            l = np.linalg.norm(v0 - av)
+            print(f'{opt_str}: {l}, {diff}, vec={av}')
 
     final_result = {'method': opt_str, 'v0': v0.tolist()}
     json.dump(final_result, open(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}_reps{args.reps}.json', "w"))
+
     columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method']
     df = pd.DataFrame(results, columns=columns)
-    df.to_csv(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
+    #df.to_csv(f'{path_data}results_{opt_str}_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
+    df.to_csv(f'{path_data}results_all_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
 
 
 
