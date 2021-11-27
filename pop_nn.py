@@ -104,7 +104,7 @@ if __name__ == '__main__':
                 data, labels = data.cuda(), target.cuda()
             optimizer.zero_grad()
             output = model(data)
-            loss = loss_function(output, target)
+            loss = loss_function(output, target).to(device)
             loss.backward()
             optimizer.step()
             train_loss = loss.data
