@@ -66,13 +66,8 @@ def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=200, optimi
 def eval_POP_NN(env, s_prev, a_prev, v_prev):
 
     # Load the NN model
-
-    d_in = num_objectives + 3
-    d_out = num_objectives
-
-    # TODO: layer size of the NN as argument?
-    model = POP_NN([d_in, 16, 8, 4, d_out])
-    model.load_state_dict(torch.load(f'{path_data}model_{method}_{file}.pth'))
+    model = POP_NN(nnl)
+    model.load_state_dict(torch.load(f'{path_data}ND_model_{batch}_{method}_{file}.pth'))
     model.eval()
     ret_vector = np.zeros(num_objectives)
     cur_disc = 1
@@ -89,7 +84,6 @@ def eval_POP_NN(env, s_prev, a_prev, v_prev):
             inputNN.extend(N)
             v_next = model.forward(torch.tensor(inputNN, dtype=torch.float32))[0].numpy()
             v_prev = v_next
-                # v_next get_value(s_prev, a_prev, pcs, objective_columns, v_next)
             a_prev = select_action(s_next, pcs, objective_columns, v_next)
             s_prev = s_next
 
@@ -112,6 +106,8 @@ if __name__ == '__main__':
     parser.add_argument('-reps', type=int, default=10, help="Reps")
     parser.add_argument('-novec', type=int, default=20, help="No of vectors")
     parser.add_argument('-method', type=str, default='PVI', help="Method")
+    parser.add_argument('-batch', type=int, default=32, help="batch size")
+    parser.add_argument('-nnl', help='NN layer structure', type=lambda s: [int(item) for item in s.split(',')])
 
     args = parser.parse_args()
 
@@ -135,6 +131,15 @@ if __name__ == '__main__':
     num_objectives = args.obj
     novec = args.novec
     method = args.method
+    batch = args.batch
+    nnl = args.nnl
+
+    # input output size
+    d_in = num_objectives + 3
+    d_out = num_objectives
+    # init NN
+    nnl.insert(0, d_in)
+    nnl.append(d_out)
 
     path_data = f'results/'
     file = f's{args.states}_a{args.act}_o{args.obj}_ss{args.suc}_seed{args.seed}_novec{novec}'
@@ -227,12 +232,12 @@ if __name__ == '__main__':
             print(f'{opt_str}: {l}, {diff}, vec={av}')
 
     final_result = {'method': opt_str, 'v0': v0.tolist()}
-    json.dump(final_result, open(f'{path_data}results_{opt_str}_{file}_exp{args.exp_seed}_reps{args.reps}.json', "w"))
+    json.dump(final_result, open(f'{path_data}ND_results_{opt_str}_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.json', "w"))
 
     columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method']
     df = pd.DataFrame(results, columns=columns)
     #df.to_csv(f'{path_data}results_{opt_str}_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
-    df.to_csv(f'{path_data}results_all_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
+    df.to_csv(f'{path_data}ND_results_all_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
 
 
 

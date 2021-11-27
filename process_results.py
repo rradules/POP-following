@@ -18,7 +18,7 @@ plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
 if __name__ == '__main__':
 
-    params = {'method': 'PQL', 'novec': 20, 'states': 10, 'obj': 2, 'act': 2, \
+    params = {'method': 'PVI', 'novec': 20, 'states': 10, 'obj': 2, 'act': 2, \
               'suc': 4, 'seed': 42, 'exp_seed': 1, 'opt': 'ils', 'reps': 10}
 
     path_data = f'results/'
@@ -27,11 +27,11 @@ if __name__ == '__main__':
     file = f'{params["method"]}_s{params["states"]}_a{params["act"]}_o{params["obj"]}_' \
            f'ss{params["suc"]}_seed{params["seed"]}_novec{params["novec"]}_exp{params["exp_seed"]}'
 
-    with open(f'{path_data}results_{params["opt"]}_{file}_reps{params["reps"]}.json', "r") as read_file:
+    with open(f'{path_data}ND_results_{params["opt"]}_{file}_reps{params["reps"]}.json', "r") as read_file:
         info = json.load(read_file)
     v0 = info['v0']
 
-    results = pd.read_csv(f'{path_data}results_all_{file}_reps{params["reps"]}.csv')
+    results = pd.read_csv(f'{path_data}ND_results_all_{file}_reps{params["reps"]}.csv')
 
     for opt_str in ['nn', 'ls', 'mls', 'ils']: #['nn', 'ls', 'mls', 'ils']
         val_mean = results[['Value0', 'Value1']].loc[results['Method'] == opt_str].mean(axis=0).values

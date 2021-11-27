@@ -5,6 +5,7 @@ __pycache__/
 
 results/
 AIcluster/
+finalres/
 
 # C extensions
 *.so
