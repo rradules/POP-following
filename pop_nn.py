@@ -101,7 +101,7 @@ if __name__ == '__main__':
             print(epoch)
         for batch_idx, (data, target) in enumerate(train_loader):
             if torch.cuda.is_available():
-                data, labels = data.cuda(), target.cuda()
+                data, labels, model = data.cuda(), target.cuda(), model.cuda()
             optimizer.zero_grad()
             output = model(data)
             loss = loss_function(output, target).to(device)
@@ -114,7 +114,7 @@ if __name__ == '__main__':
         model.eval()  # Optional when not using Model Specific layer
         for batch_idx, (data, target) in enumerate(val_loader):
             if torch.cuda.is_available():
-                data, target = data.cuda(), target.cuda()
+                data, target, model = data.cuda(), target.cuda(), model.cuda()
 
             output = model(data)
             loss = loss_function(output, target)
