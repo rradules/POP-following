@@ -10,8 +10,8 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 # Device configuration
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-#device = 'cpu' # Force CPU
+#device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+device = 'cpu' # Force CPU
 print(device)
 
 
