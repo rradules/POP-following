@@ -75,33 +75,6 @@ def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=200, optimi
     return returns
 
 
-def eval_POP_NN(env, s_prev, a_prev, v_prev):
-    # Load the NN model
-    model = POP_NN(nnl)
-    model.load_state_dict(torch.load(f'{path_data}ND_model_{batch}_{method}_{file}.pth'))
-    model.eval()
-    ret_vector = np.zeros(num_objectives)
-    cur_disc = 1
-
-    done = False
-    with torch.no_grad():
-        while not done:
-            s_next, r_next, done, _ = env.step(a_prev)
-            ret_vector += cur_disc * r_next
-            cur_disc *= gamma
-            # print(s_prev, a_prev, s_next, r_next, done)
-            N = (v_prev - r_next) / gamma
-            inputNN = [s_prev / num_states, a_prev / num_actions, s_next / num_states]
-            inputNN.extend(N)
-            v_next = model.forward(torch.tensor(inputNN, dtype=torch.float32))[0].numpy()
-            v_prev = v_next
-            a_prev = select_action(s_next, pcs, objective_columns, v_next)
-            s_prev = s_next
-
-    # print(v0, ret_vector)
-    return ret_vector
-
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -111,14 +84,10 @@ if __name__ == '__main__':
     parser.add_argument('-act', type=int, default=4, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
-    parser.add_argument('-exp_seed', type=int, default=2, help="experiment seed")
-    parser.add_argument('-optimiser', type=str, default='nn', help="Optimiser")
-    parser.add_argument('-reps', type=int, default=10, help="Reps")
+    parser.add_argument('-exp_seed', type=int, default=1, help="experiment seed")
     parser.add_argument('-novec', type=int, default=10, help="No of vectors")
     parser.add_argument('-method', type=str, default='PQL', help="Method")
-    parser.add_argument('-batch', type=int, default=8, help="batch size")
     parser.add_argument('-noise', type=float, default=0.1, help="The stochasticity in state transitions.")
-    parser.add_argument('-nnl', help='NN layer structure', type=lambda s: [int(item) for item in s.split(',')])
 
     args = parser.parse_args()
 
@@ -151,15 +120,6 @@ if __name__ == '__main__':
     num_objectives = args.obj
     novec = args.novec
     method = args.method
-    batch = args.batch
-    nnl = args.nnl
-
-    # input output size
-    d_in = num_objectives + 3
-    d_out = num_objectives
-    # init NN
-    nnl.insert(0, d_in)
-    nnl.append(d_out)
 
     path_data = f'results/'
     file = f's{args.states}_a{args.act}_o{args.obj}_ss{args.suc}_seed{args.seed}_novec{novec}'
@@ -197,41 +157,21 @@ if __name__ == '__main__':
 
     print(s0, a0, v0)
     times = 200
-
-    opt_str = args.optimiser
     # 'ls', 'mls', 'ils', 'nn'
     # opt_str = 'nn'
     results = []
-    lsreps = args.reps
-    print(f'Running {opt_str} with {lsreps} repetitions.')
+    lsreps = [5, 10, 15, 20, 25, 30]
+    lsreps = 10
+    perturbations = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     #  ['nn', 'ls', 'mls', 'ils']
-    for opt_str in ['nn', 'ls', 'mls', 'ils']:
-        if opt_str == 'nn':
-            acc = np.array([0.0, 0.0])
-            for x in range(times):
-                start = time.time()
-                env.reset()
-                env._state = s0
-                returns = eval_POP_NN(env, s0, a0, v0)
-                # print(f'{x+1}: {returns}', flush=True)
-                end = time.time()
-                elapsed_seconds = (end - start)
-                acc = acc + returns
-                results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
-
-            av = acc / times
-            diff = v0 - av
-            l = np.linalg.norm(v0 - av)
-            print(f'{opt_str}: {l}, {diff}, vec={av}')
-
-        else:
-            if opt_str == 'ls':
-                optimiser = popf_local_search
-            elif opt_str == 'mls':
+    for opt_str in ['ils']:
+        for perturb in perturbations:
+            print(f'Running {opt_str} with {lsreps} repetitions and {perturb} perturbation.')
+            if opt_str == 'mls':
                 func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=1)
                 optimiser = func
             elif opt_str == 'ils':
-                func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=0.3)
+                func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=perturb)
                 optimiser = func
 
             acc = np.array([0.0, 0.0])
@@ -244,18 +184,20 @@ if __name__ == '__main__':
                 end = time.time()
                 elapsed_seconds = (end - start)
                 acc = acc + returns
-                results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
-
+                if opt_str == 'mls':
+                    results.append(np.append(returns, [x, elapsed_seconds, opt_str, lsreps, 1]))
+                else:
+                    results.append(np.append(returns, [x, elapsed_seconds, opt_str, lsreps, perturb]))
             av = acc / times
             diff = v0 - av
             l = np.linalg.norm(v0 - av)
-            print(f'{opt_str}: {l}, {diff}, vec={av}')
+            print(f'{opt_str}, {lsreps}, {perturb}: {l}, {diff}, vec={av}')
 
     final_result = {'method': opt_str, 'v0': v0.tolist()}
     json.dump(final_result,
-              open(f'{path_data}ND_results_{opt_str}_{method}_{file}_exp{args.exp_seed}_{batch}_reps{args.reps}.json', "w"))
+              open(f'{path_data}comp_results_{opt_str}_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.json', "w"))
 
     columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method']
     df = pd.DataFrame(results, columns=columns)
     # df.to_csv(f'{path_data}results_{opt_str}_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
-    df.to_csv(f'{path_data}ND_results_all_{method}_{file}_exp{args.exp_seed}_{batch}_reps{args.reps}.csv', index=False)
+    df.to_csv(f'{path_data}comp_results_all_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
