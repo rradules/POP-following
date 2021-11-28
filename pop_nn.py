@@ -90,7 +90,7 @@ if __name__ == '__main__':
     nnl.insert(0, d_in)
     nnl.append(d_out)
     model = POP_NN(nnl).to(device)
-    loss_function = nn.MSELoss()
+    loss_function = nn.MSELoss().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     n_epochs = 3000
