@@ -10,6 +10,17 @@ import numpy as np
 import random
 import time
 from pop_ls import popf_local_search, popf_iter_local_search, toStavs
+from gym.envs.registration import register
+
+register(
+    id='RandomMOMDP-v0',
+    entry_point='randommomdp:RandomMOMDP',
+)
+
+register(
+    id='DeepSeaTreasure-v0',
+    entry_point='deep_sea_treasure:DeepSeaTreasureEnv',
+)
 
 
 def select_action(state, pcs, objective_columns, value_vector):
@@ -26,6 +37,7 @@ def get_value(state, action, pcs, objective_columns, value_vector):
     value = Q_next[objective_columns].iloc[i_min].values
     return value
 
+
 def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=200, optimiser=popf_local_search):
     # Assuming the state in the environment is indeed state0;
     # the reset needs to happen outside of this function
@@ -33,30 +45,30 @@ def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=200, optimi
     stop = False
     action = action0
     state = state0
-    returns = None
+    returns = np.zeros(num_objectives)
     cur_disc = 1
     while time < max_time and not stop:
         if value_vector is None:
             action = env.action_space.sample()
         # action picked, now let's execute it
         next_state, reward_vec, done, info = env.step(action)
-        
+
         # keeping returns statistics:
-        if returns is None:
-            returns = cur_disc*reward_vec
-        else: 
-            returns += cur_disc*reward_vec
+        #if returns is None:
+        #    returns = cur_disc * reward_vec
+        #else:
+        returns += cur_disc * reward_vec
         # lowering the next timesteps forefactor:
         cur_disc *= gamma
-        
+
         if value_vector is not None:
-            n_vector = value_vector-reward_vec
+            n_vector = value_vector - reward_vec
             n_vector /= gamma
-            next_probs = transition_function[state][action] # hacky, should be an argument
+            next_probs = transition_function[state][action]  # hacky, should be an argument
             problem = toStavs(next_probs, pcs)
             nm1, nm2, action, value_vector = optimiser(problem, n_vector, next_state)
-            #print('.',end='', flush=True)
-        
+            # print('.',end='', flush=True)
+
         state = next_state
         stop = done
         time += 1
@@ -64,7 +76,6 @@ def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=200, optimi
 
 
 def eval_POP_NN(env, s_prev, a_prev, v_prev):
-
     # Load the NN model
     model = POP_NN(nnl)
     model.load_state_dict(torch.load(f'{path_data}ND_model_{batch}_{method}_{file}.pth'))
@@ -76,10 +87,10 @@ def eval_POP_NN(env, s_prev, a_prev, v_prev):
     with torch.no_grad():
         while not done:
             s_next, r_next, done, _ = env.step(a_prev)
-            ret_vector += cur_disc*r_next
+            ret_vector += cur_disc * r_next
             cur_disc *= gamma
-            #print(s_prev, a_prev, s_next, r_next, done)
-            N = (v_prev - r_next)/gamma
+            # print(s_prev, a_prev, s_next, r_next, done)
+            N = (v_prev - r_next) / gamma
             inputNN = [s_prev / num_states, a_prev / num_actions, s_next / num_states]
             inputNN.extend(N)
             v_next = model.forward(torch.tensor(inputNN, dtype=torch.float32))[0].numpy()
@@ -87,8 +98,7 @@ def eval_POP_NN(env, s_prev, a_prev, v_prev):
             a_prev = select_action(s_next, pcs, objective_columns, v_next)
             s_prev = s_next
 
-
-    #print(v0, ret_vector)
+    # print(v0, ret_vector)
     return ret_vector
 
 
@@ -96,36 +106,46 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-states', type=int, default=10, help="number of states")
+    parser.add_argument('-states', type=int, default=110, help="number of states")
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
-    parser.add_argument('-act', type=int, default=2, help="number of actions")
+    parser.add_argument('-act', type=int, default=4, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
-    parser.add_argument('-exp_seed', type=int, default=1, help="experiment seed")
+    parser.add_argument('-exp_seed', type=int, default=2, help="experiment seed")
     parser.add_argument('-optimiser', type=str, default='nn', help="Optimiser")
     parser.add_argument('-reps', type=int, default=10, help="Reps")
-    parser.add_argument('-novec', type=int, default=20, help="No of vectors")
-    parser.add_argument('-method', type=str, default='PVI', help="Method")
-    parser.add_argument('-batch', type=int, default=32, help="batch size")
+    parser.add_argument('-novec', type=int, default=10, help="No of vectors")
+    parser.add_argument('-method', type=str, default='PQL', help="Method")
+    parser.add_argument('-batch', type=int, default=8, help="batch size")
+    parser.add_argument('-noise', type=float, default=0.1, help="The stochasticity in state transitions.")
     parser.add_argument('-nnl', help='NN layer structure', type=lambda s: [int(item) for item in s.split(',')])
 
     args = parser.parse_args()
 
     # reload environment
 
-    register(
-        id='RandomMOMDP-v0',
-        entry_point='randommomdp:RandomMOMDP',
-        reward_threshold=0.0,
-        kwargs={'nstates': args.states, 'nobjectives': args.obj,
-                'nactions': args.act, 'nsuccessor': args.suc, 'seed': args.seed}
-    )
+    if args.states < 100:
+        env = gym.make('RandomMOMDP-v0', nstates=args.states, nobjectives=args.obj, nactions=args.act,
+                       nsuccessor=args.suc, seed=args.seed)
+        num_states = env.observation_space.n
+        num_actions = env.action_space.n
+        num_objectives = env._nobjectives
+        num_successors = args.suc
+        transition_function = env._transition_function
+        reward_function = env._old_reward_function
+    else:
+        env = gym.make('DeepSeaTreasure-v0', seed=args.seed, noise=args.noise)
+        num_states = env.nS
+        num_actions = env.nA
+        num_objectives = 2
+        num_successors = env.nS
+        transition_function = env._transition_function
+        reward_function = env._reward_function
 
     np.random.seed(args.exp_seed)
     random.seed(args.exp_seed)
     torch.manual_seed(args.exp_seed)
 
-    env = gym.make('RandomMOMDP-v0')
     num_states = env.observation_space.n
     num_actions = env.action_space.n
     num_objectives = args.obj
@@ -220,25 +240,22 @@ if __name__ == '__main__':
                 env.reset()
                 env._state = s0
                 returns = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
-                #print(f'{x+1}: {returns}', flush=True)
+                # print(f'{x+1}: {returns}', flush=True)
                 end = time.time()
                 elapsed_seconds = (end - start)
                 acc = acc + returns
                 results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
 
-            av = acc/times
+            av = acc / times
             diff = v0 - av
             l = np.linalg.norm(v0 - av)
             print(f'{opt_str}: {l}, {diff}, vec={av}')
 
     final_result = {'method': opt_str, 'v0': v0.tolist()}
-    json.dump(final_result, open(f'{path_data}ND_results_{opt_str}_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.json', "w"))
+    json.dump(final_result,
+              open(f'{path_data}ND_results_{opt_str}_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.json', "w"))
 
     columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method']
     df = pd.DataFrame(results, columns=columns)
-    #df.to_csv(f'{path_data}results_{opt_str}_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
+    # df.to_csv(f'{path_data}results_{opt_str}_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
     df.to_csv(f'{path_data}ND_results_all_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
-
-
-
-

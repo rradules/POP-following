@@ -18,7 +18,7 @@ plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
 if __name__ == '__main__':
 
-    params = {'method': 'PVI', 'novec': 20, 'states': 10, 'obj': 2, 'act': 2, \
+    params = {'method': 'PVI', 'novec': 10, 'states': 110, 'obj': 2, 'act': 4, \
               'suc': 4, 'seed': 42, 'exp_seed': 1, 'opt': 'ils', 'reps': 10}
 
     path_data = f'results/'

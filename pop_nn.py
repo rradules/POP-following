@@ -42,7 +42,7 @@ if __name__ == '__main__':
     parser.add_argument('-act', type=int, default=4, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
-    parser.add_argument('-method', type=str, default='PVI', help="method")
+    parser.add_argument('-method', type=str, default='PQL', help="method")
     parser.add_argument('-novec', type=int, default=10, help="number of vectors")
     parser.add_argument('-batch', type=int, default=8, help="batch size")
     parser.add_argument('-nnl', help='NN layer structure', type=lambda s: [int(item) for item in s.split(',')])
