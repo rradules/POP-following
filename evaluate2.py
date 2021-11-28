@@ -195,9 +195,9 @@ if __name__ == '__main__':
 
     final_result = {'method': opt_str, 'v0': v0.tolist()}
     json.dump(final_result,
-              open(f'{path_data}comp_results_{opt_str}_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.json', "w"))
+              open(f'{path_data}comp_results_{opt_str}_{method}_{file}_exp{args.exp_seed}_reps{lsreps}.json', "w"))
 
     columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method']
     df = pd.DataFrame(results, columns=columns)
     # df.to_csv(f'{path_data}results_{opt_str}_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
-    df.to_csv(f'{path_data}comp_results_all_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
+    df.to_csv(f'{path_data}comp_results_{method}_{file}_exp{args.exp_seed}_reps{lsreps}.csv', index=False)
