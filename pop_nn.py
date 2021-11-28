@@ -10,8 +10,8 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 # Device configuration
-#device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-device = 'cpu' # Force CPU
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+#device = 'cpu' # Force CPU
 print(device)
 
 
@@ -100,8 +100,8 @@ if __name__ == '__main__':
         if epoch % 100 == 0:
             print(epoch)
         for batch_idx, (data, target) in enumerate(train_loader):
-            if torch.cuda.is_available():
-                data, labels = data.cuda(), target.cuda()
+            #if torch.cuda.is_available():
+             #   data, labels = data.cuda(), target.cuda()
             optimizer.zero_grad()
             output = model(data)
             loss = loss_function(output, target)
@@ -113,8 +113,8 @@ if __name__ == '__main__':
 
         model.eval()  # Optional when not using Model Specific layer
         for batch_idx, (data, target) in enumerate(val_loader):
-            if torch.cuda.is_available():
-                data, target = data.cuda(), target.cuda()
+            #if torch.cuda.is_available():
+            #    data, target = data.cuda(), target.cuda()
 
             output = model(data)
             loss = loss_function(output, target)
