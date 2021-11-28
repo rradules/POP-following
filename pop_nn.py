@@ -101,7 +101,7 @@ if __name__ == '__main__':
             print(epoch)
         for batch_idx, (data, target) in enumerate(train_loader):
             if torch.cuda.is_available():
-                data, labels, model = data.cuda(), target.cuda(), model.cuda()
+                data, labels, model, loss_function = data.cuda(), target.cuda(), model.cuda(), loss_function.cuda()
             optimizer.zero_grad()
             output = model(data)
             loss = loss_function(output, target).to(device)
