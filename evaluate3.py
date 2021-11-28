@@ -197,7 +197,7 @@ if __name__ == '__main__':
     json.dump(final_result,
               open(f'{path_data}comp_results_all_{method}_{file}_exp{args.exp_seed}_reps_all.json', "w"))
 
-    columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method']
+    columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method', 'Repetitions', 'Perturbation']
     df = pd.DataFrame(results, columns=columns)
     # df.to_csv(f'{path_data}results_{opt_str}_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
     df.to_csv(f'{path_data}comp_results_all_{method}_{file}_exp{args.exp_seed}_reps_all.csv', index=False)
