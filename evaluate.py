@@ -123,7 +123,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # reload environment
-
     if args.states < 100:
         env = gym.make('RandomMOMDP-v0', nstates=args.states, nobjectives=args.obj, nactions=args.act,
                        nsuccessor=args.suc, seed=args.seed)
@@ -170,7 +169,11 @@ if __name__ == '__main__':
 
     objective_columns = ['Objective 0', 'Objective 1']
 
-    gamma = 0.8  # Discount factor
+    if num_states < 100:
+        gamma = 0.8  # Discount factor
+    else:
+        gamma = 1
+
 
     with open(f'{path_data}MOMDP_{method}_{file}.json', "r") as read_file:
         env_info = json.load(read_file)
