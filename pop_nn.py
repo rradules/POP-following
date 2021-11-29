@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
     n_epochs = args.epoch
     predict_every = 20
-    min_valid_loss = 1.0
+    min_valid_loss = 100.0
     for epoch in range(n_epochs):
         if epoch % 100 == 0:
             print(epoch)
