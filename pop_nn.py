@@ -34,6 +34,25 @@ class POP_NN(nn.Module):
         return self.lins[-1](x)
 
 
+class POP_NN_SDST(nn.Module):
+    """
+    Simple MLP model
+    :param d_layer: array with the layer size configuration
+    """
+
+    def __init__(self, d_layer):
+        super(POP_NN_SDST, self).__init__()
+        self.d_layer = d_layer
+        layer_list = [nn.Linear(d_layer[l], d_layer[l + 1]) for l in range(len(d_layer) - 1)]
+        self.lins = nn.ModuleList(layer_list)
+
+    def forward(self, x):
+        x = x.view(-1, self.d_layer[0])
+        for layer in self.lins[:-1]:
+            x = F.leaky_relu(layer(x), 0.1)
+        return self.lins[-1](x)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
@@ -90,7 +109,11 @@ if __name__ == '__main__':
     # init NN
     nnl.insert(0, d_in)
     nnl.append(d_out)
-    model = POP_NN(nnl).to(device)
+    if num_states < 100:
+        model = POP_NN(nnl).to(device)
+    else:
+        model = POP_NN_SDST(nnl).to(device)
+
     loss_function = nn.MSELoss().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
