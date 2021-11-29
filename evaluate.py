@@ -27,7 +27,7 @@ def select_action(state, pcs, objective_columns, value_vector):
     Q_next = pcs.loc[pcs['State'] == state]
     i_min = np.linalg.norm(Q_next[objective_columns] - value_vector, axis=1).argmin()
     action = Q_next['Action'].iloc[i_min]
-    # print(str(value_vector)+","+str(action))
+    #print(f'VV{value_vector}, {np.linalg.norm(Q_next[objective_columns] - value_vector, axis=1).min()}')
     return action
 
 
@@ -35,6 +35,7 @@ def get_value(state, action, pcs, objective_columns, value_vector):
     Q_next = pcs.loc[(pcs['State'] == state) & (pcs['Action'] == action)]
     i_min = np.linalg.norm(Q_next[objective_columns] - value_vector, axis=1).argmin()
     value = Q_next[objective_columns].iloc[i_min].values
+    #print(value_vector, value)
     return value
 
 
@@ -52,11 +53,6 @@ def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=200, optimi
             action = env.action_space.sample()
         # action picked, now let's execute it
         next_state, reward_vec, done, info = env.step(action)
-
-        # keeping returns statistics:
-        #if returns is None:
-        #    returns = cur_disc * reward_vec
-        #else:
         returns += cur_disc * reward_vec
         # lowering the next timesteps forefactor:
         cur_disc *= gamma
@@ -64,7 +60,7 @@ def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=200, optimi
         if value_vector is not None:
             n_vector = value_vector - reward_vec
             n_vector /= gamma
-            next_probs = transition_function[state][action]  # hacky, should be an argument
+            next_probs = transition_function[state][action]
             problem = toStavs(next_probs, pcs)
             nm1, nm2, action, value_vector = optimiser(problem, n_vector, next_state)
             # print('.',end='', flush=True)
@@ -91,8 +87,11 @@ def eval_POP_NN(env, s_prev, a_prev, v_prev):
             cur_disc *= gamma
             # print(s_prev, a_prev, s_next, r_next, done)
             N = (v_prev - r_next) / gamma
+            if method == 'PVI':
+                N = np.around(N, decimals=2)
             inputNN = [s_prev / num_states, a_prev / num_actions, s_next / num_states]
             inputNN.extend(N)
+            #print(f'NNinput {inputNN}')
             v_next = model.forward(torch.tensor(inputNN, dtype=torch.float32))[0].numpy()
             v_prev = v_next
             a_prev = select_action(s_next, pcs, objective_columns, v_next)
@@ -106,15 +105,15 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-states', type=int, default=110, help="number of states")
+    parser.add_argument('-states', type=int, default=20, help="number of states")
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
-    parser.add_argument('-act', type=int, default=4, help="number of actions")
-    parser.add_argument('-suc', type=int, default=4, help="number of successors")
+    parser.add_argument('-act', type=int, default=3, help="number of actions")
+    parser.add_argument('-suc', type=int, default=7, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
     parser.add_argument('-exp_seed', type=int, default=2, help="experiment seed")
     parser.add_argument('-optimiser', type=str, default='nn', help="Optimiser")
     parser.add_argument('-reps', type=int, default=10, help="Reps")
-    parser.add_argument('-novec', type=int, default=10, help="No of vectors")
+    parser.add_argument('-novec', type=int, default=5, help="No of vectors")
     parser.add_argument('-method', type=str, default='PQL', help="Method")
     parser.add_argument('-batch', type=int, default=8, help="batch size")
     parser.add_argument('-noise', type=float, default=0.1, help="The stochasticity in state transitions.")
@@ -130,16 +129,12 @@ if __name__ == '__main__':
         num_actions = env.action_space.n
         num_objectives = env._nobjectives
         num_successors = args.suc
-        transition_function = env._transition_function
-        reward_function = env._old_reward_function
     else:
         env = gym.make('DeepSeaTreasure-v0', seed=args.seed, noise=args.noise)
         num_states = env.nS
         num_actions = env.nA
         num_objectives = 2
         num_successors = env.nS
-        transition_function = env._transition_function
-        reward_function = env._reward_function
 
     np.random.seed(args.exp_seed)
     random.seed(args.exp_seed)
@@ -174,12 +169,14 @@ if __name__ == '__main__':
     else:
         gamma = 1
 
-
     with open(f'{path_data}MOMDP_{method}_{file}.json', "r") as read_file:
         env_info = json.load(read_file)
 
     transition_function = env_info['transition']
+    env._transition_function = np.array(transition_function)
+
     reward_function = env_info['reward']
+    env._reward_function = np.array(reward_function)
 
     pcs = pd.read_csv(f'{path_data}PCS_{method}_{file}.csv')
 
