@@ -45,6 +45,7 @@ if __name__ == '__main__':
     parser.add_argument('-method', type=str, default='PQL', help="method")
     parser.add_argument('-novec', type=int, default=10, help="number of vectors")
     parser.add_argument('-batch', type=int, default=8, help="batch size")
+    parser.add_argument('-epoch', type=int, default=3000, help="epochs")
     parser.add_argument('-nnl', help='NN layer structure', type=lambda s: [int(item) for item in s.split(',')])
 
     args = parser.parse_args()
@@ -93,7 +94,7 @@ if __name__ == '__main__':
     loss_function = nn.MSELoss().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-    n_epochs = 3000
+    n_epochs = args.epoch
     predict_every = 20
     min_valid_loss = 1.0
     for epoch in range(n_epochs):
