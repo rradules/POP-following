@@ -128,4 +128,4 @@ if __name__ == '__main__':
                 print(f'Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f}) \t Saving The Model')
                 min_valid_loss = valid_loss
                 # Saving State Dict
-                torch.save(model.state_dict(), f'{path_data}ND_model_{batch}_{method}_{file}.pth')
+                torch.save(model.state_dict(), f'{path_data}ND_model_{batch}_l{len(args.nnl)}_{method}_{file}.pth')
