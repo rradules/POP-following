@@ -40,7 +40,7 @@ class DeepSeaTreasureEnv(discrete.DiscreteEnv):
             P[s][LEFT] = self._calculate_transition_prob(position, LEFT_MOVE, noise)
 
             # Build up the transition and reward functions.
-            if s not in treasures:  # If the current state is a treasure, make it terminal by leaving everything zero.
+            if position not in treasures:  # If the current state is a treasure, make it terminal by leaving everything zero.
                 for action in range(nA):
                     transitions = P[s][action]
                     for transition in transitions:
