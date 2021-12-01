@@ -27,6 +27,7 @@ class DeepSeaTreasureEnv(discrete.DiscreteEnv):
         nO = 2
 
         # Calculate transition probabilities and rewards
+        treasures = self._treasures()
         P = {}  # Transitions and rewards as required by gym
         self._transition_function = np.zeros((nS, nA, nS))  # Cleaner code for transitions.
         self._reward_function = np.zeros((nS, nA, nS, nO))  # And cleaner code for rewards.
@@ -39,14 +40,15 @@ class DeepSeaTreasureEnv(discrete.DiscreteEnv):
             P[s][LEFT] = self._calculate_transition_prob(position, LEFT_MOVE, noise)
 
             # Build up the transition and reward functions.
-            for action in range(nA):
-                transitions = P[s][action]
-                for transition in transitions:
-                    prob = transition[0]
-                    next_state = transition[1]
-                    reward = transition[2]
-                    self._transition_function[s, action, next_state] = prob
-                    self._reward_function[s, action, next_state] = reward
+            if s not in treasures:  # If the current state is a treasure, make it terminal by leaving everything zero.
+                for action in range(nA):
+                    transitions = P[s][action]
+                    for transition in transitions:
+                        prob = transition[0]
+                        next_state = transition[1]
+                        reward = transition[2]
+                        self._transition_function[s, action, next_state] = prob
+                        self._reward_function[s, action, next_state] = reward
 
         # Calculate initial state distribution
         # We always start in state (0, 0)
@@ -97,6 +99,8 @@ class DeepSeaTreasureEnv(discrete.DiscreteEnv):
         intended_position = np.array(current) + np.array(delta)
         intended_position = self._limit_coordinates(intended_position).astype(int)
         intended_position = tuple(intended_position)
+        if intended_position in unreachable:
+            intended_position = tuple(current)
         intended_position = np.ravel_multi_index(intended_position, self.shape)
 
         reachable = {}
