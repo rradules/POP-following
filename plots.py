@@ -1,7 +1,7 @@
 import json
 import matplotlib
 import pandas as pd
-from utils import mkdir_p
+from utils import mkdir_p, multiplicative_epsilon_metric
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -18,8 +18,8 @@ plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
 if __name__ == '__main__':
 
-    params = {'method': 'PVI', 'novec': 5, 'states': 20, 'obj': 2, 'act': 3, \
-              'suc': 7, 'seed': 42, 'exp_seed': 1, 'opt': 'ils', 'reps': 10}
+    params = {'method': 'PVI', 'novec': 20, 'states': 10, 'obj': 2, 'act': 2, \
+              'suc': 4, 'seed': 42, 'exp_seed': 1, 'opt': 'ils', 'reps': 10}
 
     path_data = f'results/'
     path_plots = f'plots/'
@@ -38,8 +38,15 @@ if __name__ == '__main__':
         for perturb in perturbations:
             val_mean = results[['Value0', 'Value1']].loc[results['Perturbation'] == perturb].mean(axis=0).values
             val_diff = v0 - val_mean
-            toplot.append([opt_str, perturb, max(0, max(val_diff))])
-            print(opt_str, perturb, max(0, max(val_diff)))
+            if params["states"] > 100:
+                val_diff = multiplicative_epsilon_metric(val_mean, v0)
+                toplot.append([opt_str, perturb, val_diff])
+                print(opt_str, perturb, val_diff)
+                print(opt_str, val_diff)
+            else:
+                val_diff = v0 - val_mean
+                toplot.append([opt_str, perturb, max(0, max(val_diff))])
+                print(opt_str, perturb, max(0, max(val_diff)))
 
     columns = ['Method', 'Perturbation', 'epsilon']
     df = pd.DataFrame(toplot, columns=columns)
@@ -65,7 +72,7 @@ if __name__ == '__main__':
     ax = sns.lineplot(x='Perturbation', y='epsilon',  data=df, ci='sd', hue='Method')
     ax.set(ylabel='Epsilon metric')
     ax.set(xlabel='Iterations')
-    ax.set_ylim(-0.01, 1.5)
+    ax.set_ylim(-0.01, 2.3)
 
     plot_name = f"{path_plots}/pert_{file}"
     # plt.title(f"Action probabilities - Agent 2")
@@ -114,7 +121,7 @@ if __name__ == '__main__':
     ax = sns.lineplot(x='Repetitions', y='epsilon', data=df, ci='sd', hue='Method')
     ax.set(ylabel='Epsilon metric')
     ax.set(xlabel='Iterations')
-    ax.set_ylim(-0.01, 1.5)
+    ax.set_ylim(-0.01, 2.3)
 
     plot_name = f"{path_plots}/reps_{file}"
     # plt.title(f"Action probabilities - Agent 2")
