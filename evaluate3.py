@@ -79,13 +79,13 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-states', type=int, default=110, help="number of states")
+    parser.add_argument('-states', type=int, default=20, help="number of states")
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
-    parser.add_argument('-act', type=int, default=4, help="number of actions")
-    parser.add_argument('-suc', type=int, default=4, help="number of successors")
+    parser.add_argument('-act', type=int, default=3, help="number of actions")
+    parser.add_argument('-suc', type=int, default=7, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
     parser.add_argument('-exp_seed', type=int, default=1, help="experiment seed")
-    parser.add_argument('-novec', type=int, default=10, help="No of vectors")
+    parser.add_argument('-novec', type=int, default=5, help="No of vectors")
     parser.add_argument('-method', type=str, default='PQL', help="Method")
     parser.add_argument('-noise', type=float, default=0.1, help="The stochasticity in state transitions.")
 
@@ -150,6 +150,17 @@ if __name__ == '__main__':
     dom = True
     subset = pcs[['Action', 'Objective 0', 'Objective 1']].loc[pcs['State'] == s0]
     cand = [subset[objective_columns].to_numpy()]
+    print(f'Init PCS size: {len(cand[0])}')
+
+    pcs_no = np.zeros(num_states)
+    for s in range(num_states):
+        subset = pcs[['Action', 'Objective 0', 'Objective 1']].loc[pcs['State'] == s]
+        cand = [subset[objective_columns].to_numpy()]
+        pcs_no[s] = len(cand[0])
+    print(f'min: {np.min(pcs_no)}, max: {np.max(pcs_no)}, average: {np.average(pcs_no)}, s0: {pcs_no[s0]}')
+
+
+
 
     # Select initial non-dominated value
     while dom:
@@ -163,9 +174,9 @@ if __name__ == '__main__':
     # 'ls', 'mls', 'ils', 'nn'
     # opt_str = 'nn'
     results = []
-    lsrepetitions = [5, 10, 15, 20, 25, 30]
+    lsrepetitions = [5, 10, 15, 20, 25, 30, 35, 40]
     #  ['nn', 'ls', 'mls', 'ils']
-    for opt_str in ['mls', 'ils']:
+    for opt_str in ['mls', 'ils', 'ls']:
         for lsreps in lsrepetitions:
             print(f'Running {opt_str} with {lsreps} repetitions.')
             if opt_str == 'mls':
@@ -176,6 +187,8 @@ if __name__ == '__main__':
                 perturb = 0.3
                 func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=perturb)
                 optimiser = func
+            elif opt_str == 'ls':
+                optimiser = popf_local_search
 
             acc = np.array([0.0, 0.0])
             for x in range(times):
