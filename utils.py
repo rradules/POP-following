@@ -230,3 +230,29 @@ def check_converged(new_nd_vectors, old_nd_vectors, epsilon):
                 if min_epsilon > epsilon:  # Early stop if the minimum epsilon for a vector is already above the threshold.
                     return False
     return True
+
+
+def additive_epsilon_metric(new_vec, pareto_vec):
+    """
+    This function returns the additive epsilon metric between a new vector and a vector on the known Pareto front.
+    :param new_vec: The new vector.
+    :param pareto_vec: The vector on the Pareto front.
+    :return: The additive epsilon metric between the two vectors. Bounded by the interval [0, inf).
+    """
+    difference = pareto_vec - new_vec
+    max_diff = np.max(difference)
+    epsilon = max(0, max_diff)
+    return epsilon
+
+
+def multiplicative_epsilon_metric(new_vec, pareto_vec):
+    """
+    This function returns the multiplicative epsilon metric between a new vector and a vector on the known Pareto front.
+    :param new_vec: The new vector.
+    :param pareto_vec: The vector on the Pareto front.
+    :return: The multiplicative epsilon metric between the two vectors. Bounded by the interval [0, inf).
+    """
+    percentage_change = (pareto_vec / new_vec) - 1
+    max_change = np.max(percentage_change)
+    epsilon = max(0, max_change)
+    return epsilon
