@@ -48,6 +48,7 @@ def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=200, optimi
     state = state0
     returns = np.zeros(num_objectives)
     cur_disc = 1
+    total_opt_val = 0
     while time < max_time and not stop:
         if value_vector is None:
             action = env.action_space.sample()
@@ -62,13 +63,14 @@ def rollout(env, state0, action0, value_vector, pcs, gamma, max_time=200, optimi
             n_vector /= gamma
             next_probs = transition_function[state][action]
             problem = toStavs(next_probs, pcs)
-            nm1, nm2, action, value_vector = optimiser(problem, n_vector, next_state)
-            # print('.',end='', flush=True)
+            cur_vector, score, action, value_vector = optimiser(problem, n_vector, next_state)
+            total_opt_val += score
 
         state = next_state
         stop = done
         time += 1
-    return returns
+    avg_opt_val = total_opt_val / time
+    return returns, avg_opt_val
 
 
 def eval_POP_NN(env, s_prev, a_prev, v_prev):
@@ -230,11 +232,13 @@ if __name__ == '__main__':
         elif opt_str == 'ls':
             optimiser = popf_local_search
             acc = np.array([0.0, 0.0])
+            total_opt_val = 0
             for x in range(times):
                 start = time.time()
                 env.reset()
                 env._state = s0
-                returns = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
+                returns, rollout_avg_opt_val = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
+                total_opt_val += rollout_avg_opt_val
                 # print(f'{x+1}: {returns}', flush=True)
                 end = time.time()
                 elapsed_seconds = (end - start)
@@ -244,7 +248,8 @@ if __name__ == '__main__':
             av = acc / times
             diff = v0 - av
             l = max(0, max(diff))
-            print(f'{opt_str}: {l}, {diff}, vec={av}')
+            avg_opt_val = total_opt_val / times
+            print(f'{opt_str}: {l}, {diff}, vec={av}, avg_opt_val={avg_opt_val}')
 
         elif opt_str == 'ils':
             for perturb in perturbations:
@@ -252,11 +257,13 @@ if __name__ == '__main__':
                 func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsrep, pertrub_p=perturb)
                 optimiser = func
                 acc = np.array([0.0, 0.0])
+                total_opt_val = 0
                 for x in range(times):
                     start = time.time()
                     env.reset()
                     env._state = s0
-                    returns = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
+                    returns, rollout_avg_opt_val = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
+                    total_opt_val += rollout_avg_opt_val
                     # print(f'{x+1}: {returns}', flush=True)
                     end = time.time()
                     elapsed_seconds = (end - start)
@@ -266,7 +273,8 @@ if __name__ == '__main__':
                 av = acc / times
                 diff = v0 - av
                 l = max(0, max(diff))
-                print(f'{opt_str}: {l}, {diff}, vec={av}')
+                avg_opt_val = total_opt_val / times
+                print(f'{opt_str}: {l}, {diff}, vec={av}, avg_opt_val={avg_opt_val}')
 
     for opt_str in ['mls', 'ils']:
         for lsrep in lsreps:
@@ -281,11 +289,13 @@ if __name__ == '__main__':
                 optimiser = func
 
             acc = np.array([0.0, 0.0])
+            total_opt_val = 0
             for x in range(times):
                 start = time.time()
                 env.reset()
                 env._state = s0
-                returns = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
+                returns, rollout_avg_opt_val = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
+                total_opt_val += rollout_avg_opt_val
                 # print(f'{x+1}: {returns}', flush=True)
                 end = time.time()
                 elapsed_seconds = (end - start)
@@ -294,7 +304,8 @@ if __name__ == '__main__':
             av = acc / times
             diff = v0 - av
             l = max(0, max(diff))
-            print(f'{opt_str}, {lsrep}, {perturb}: {l}, {diff}, vec={av}')
+            avg_opt_val = total_opt_val / times
+            print(f'{opt_str}, {lsrep}, {perturb}: {l}, {diff}, vec={av}, avg_opt_val={avg_opt_val}')
 
     final_result = {'method': 'all', 'v0': v0.tolist()}
     json.dump(final_result,
