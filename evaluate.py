@@ -251,7 +251,6 @@ if __name__ == '__main__':
                 print(f'Running {opt_str} with {perturb} perturbations.')
                 func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsrep, pertrub_p=perturb)
                 optimiser = func
-                print(f'Running {opt_str} with {lsreps} repetitions and {perturb} perturbation.')
                 acc = np.array([0.0, 0.0])
                 for x in range(times):
                     start = time.time()
