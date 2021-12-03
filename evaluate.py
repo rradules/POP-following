@@ -290,14 +290,11 @@ if __name__ == '__main__':
                 end = time.time()
                 elapsed_seconds = (end - start)
                 acc = acc + returns
-                if opt_str == 'mls':
-                    results.append(np.append(returns, [x, elapsed_seconds, opt_str, lsreps, perturb]))
-                else:
-                    results.append(np.append(returns, [x, elapsed_seconds, opt_str, lsreps, perturb]))
+                results.append(np.append(returns, [x, elapsed_seconds, opt_str, lsrep, perturb]))
             av = acc / times
             diff = v0 - av
             l = max(0, max(diff))
-            print(f'{opt_str}, {lsreps}, {perturb}: {l}, {diff}, vec={av}')
+            print(f'{opt_str}, {lsrep}, {perturb}: {l}, {diff}, vec={av}')
 
     final_result = {'method': 'all', 'v0': v0.tolist()}
     json.dump(final_result,
