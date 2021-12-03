@@ -105,15 +105,15 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-states', type=int, default=20, help="number of states")
+    parser.add_argument('-states', type=int, default=10, help="number of states")
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
-    parser.add_argument('-act', type=int, default=3, help="number of actions")
-    parser.add_argument('-suc', type=int, default=7, help="number of successors")
+    parser.add_argument('-act', type=int, default=2, help="number of actions")
+    parser.add_argument('-suc', type=int, default=4, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
-    parser.add_argument('-exp_seed', type=int, default=2, help="experiment seed")
+    parser.add_argument('-exp_seed', type=int, default=1, help="experiment seed")
     parser.add_argument('-optimiser', type=str, default='nn', help="Optimiser")
     parser.add_argument('-reps', type=int, default=10, help="Reps")
-    parser.add_argument('-novec', type=int, default=5, help="No of vectors")
+    parser.add_argument('-novec', type=int, default=30, help="No of vectors")
     parser.add_argument('-method', type=str, default='PQL', help="Method")
     parser.add_argument('-batch', type=int, default=8, help="batch size")
     parser.add_argument('-noise', type=float, default=0.1, help="The stochasticity in state transitions.")
@@ -202,11 +202,14 @@ if __name__ == '__main__':
     # 'ls', 'mls', 'ils', 'nn'
     # opt_str = 'nn'
     results = []
-    lsreps = args.reps
-    print(f'Running {opt_str} with {lsreps} repetitions.')
+    lsrep = args.reps
+    #lsrep = 10
+    perturbations = [0.1, 0.2, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    lsreps = [5, 10, 15, 20, 25, 30, 35, 40]
     #  ['nn', 'ls', 'mls', 'ils']
-    for opt_str in ['nn', 'ls', 'mls', 'ils']:
+    for opt_str in ['nn', 'ls', 'ils']:
         if opt_str == 'nn':
+            print(f'Running {opt_str}.')
             acc = np.array([0.0, 0.0])
             for x in range(times):
                 start = time.time()
@@ -217,21 +220,65 @@ if __name__ == '__main__':
                 end = time.time()
                 elapsed_seconds = (end - start)
                 acc = acc + returns
-                results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
+                results.append(np.append(returns, [x, elapsed_seconds, opt_str, -1, -1]))
 
             av = acc / times
             diff = v0 - av
-            l = np.linalg.norm(v0 - av)
+            l = max(0, max(diff))
             print(f'{opt_str}: {l}, {diff}, vec={av}')
 
-        else:
-            if opt_str == 'ls':
-                optimiser = popf_local_search
-            elif opt_str == 'mls':
-                func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=1)
+        elif opt_str == 'ls':
+            optimiser = popf_local_search
+            acc = np.array([0.0, 0.0])
+            for x in range(times):
+                start = time.time()
+                env.reset()
+                env._state = s0
+                returns = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
+                # print(f'{x+1}: {returns}', flush=True)
+                end = time.time()
+                elapsed_seconds = (end - start)
+                acc = acc + returns
+                # results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
+                results.append(np.append(returns, [x, elapsed_seconds, opt_str, -1, -1]))
+            av = acc / times
+            diff = v0 - av
+            l = max(0, max(diff))
+            print(f'{opt_str}: {l}, {diff}, vec={av}')
+
+        elif opt_str == 'ils':
+            for perturb in perturbations:
+                print(f'Running {opt_str} with {perturb} perturbations.')
+                func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsrep, pertrub_p=perturb)
+                optimiser = func
+                print(f'Running {opt_str} with {lsreps} repetitions and {perturb} perturbation.')
+                acc = np.array([0.0, 0.0])
+                for x in range(times):
+                    start = time.time()
+                    env.reset()
+                    env._state = s0
+                    returns = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
+                    # print(f'{x+1}: {returns}', flush=True)
+                    end = time.time()
+                    elapsed_seconds = (end - start)
+                    acc = acc + returns
+                    # results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
+                    results.append(np.append(returns, [x, elapsed_seconds, opt_str, lsrep, perturb]))
+                av = acc / times
+                diff = v0 - av
+                l = max(0, max(diff))
+                print(f'{opt_str}: {l}, {diff}, vec={av}')
+
+    for opt_str in ['mls', 'ils']:
+        for lsrep in lsreps:
+            print(f'Running {opt_str} with {lsreps} repetitions.')
+            if opt_str == 'mls':
+                perturb = 1
+                func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsrep, pertrub_p=perturb)
                 optimiser = func
             elif opt_str == 'ils':
-                func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=0.3)
+                perturb = 0.3
+                func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsrep, pertrub_p=perturb)
                 optimiser = func
 
             acc = np.array([0.0, 0.0])
@@ -244,18 +291,21 @@ if __name__ == '__main__':
                 end = time.time()
                 elapsed_seconds = (end - start)
                 acc = acc + returns
-                results.append(np.append(returns, [x, elapsed_seconds, opt_str]))
-
+                if opt_str == 'mls':
+                    results.append(np.append(returns, [x, elapsed_seconds, opt_str, lsreps, perturb]))
+                else:
+                    results.append(np.append(returns, [x, elapsed_seconds, opt_str, lsreps, perturb]))
             av = acc / times
             diff = v0 - av
-            l = np.linalg.norm(v0 - av)
-            print(f'{opt_str}: {l}, {diff}, vec={av}')
+            l = max(0, max(diff))
+            print(f'{opt_str}, {lsreps}, {perturb}: {l}, {diff}, vec={av}')
 
-    final_result = {'method': opt_str, 'v0': v0.tolist()}
+    final_result = {'method': 'all', 'v0': v0.tolist()}
     json.dump(final_result,
-              open(f'{path_data}ND_results_{opt_str}_{method}_{file}_exp{args.exp_seed}_{batch}_reps{args.reps}.json', "w"))
+              open(f'{path_data}ND_results_all_{method}_{file}_exp{args.exp_seed}_{batch}_reps{args.reps}.json', "w"))
 
-    columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method']
+    #columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method']
+    columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method', 'Repetitions', 'Perturbation']
     df = pd.DataFrame(results, columns=columns)
     # df.to_csv(f'{path_data}results_{opt_str}_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
     df.to_csv(f'{path_data}ND_results_all_{method}_{file}_exp{args.exp_seed}_{batch}_reps{args.reps}.csv', index=False)
