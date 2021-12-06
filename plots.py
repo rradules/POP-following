@@ -17,7 +17,7 @@ plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
 if __name__ == '__main__':
 
-    params = {'method': 'PVI', 'novec': 20, 'states': 10, 'obj': 2, 'act': 2, \
+    params = {'method': 'PQL', 'novec': 30, 'states': 10, 'obj': 2, 'act': 2, \
               'suc': 4, 'seed': 42, 'exp_seed': 1, 'opt': 'ils', 'reps': 10, 'batch': 32}
 
     path_data = f'results/'
@@ -57,10 +57,10 @@ if __name__ == '__main__':
     results.replace('ils', 'ILS', inplace=True)
     ax = sns.barplot(x='Perturbation', y='Runtime', hue='Method', data=results, ci='sd')
     ax.set(ylabel='Average runtime (s)')
-    ax.set_ylim(0, 20)
+    ax.set_ylim(0, 10)
     for p in ax.patches:
         ax.annotate(format(p.get_height(), '.1f'),
-                    (p.get_x() + p.get_width() / 2., p.get_height() + 2),
+                    (p.get_x() + p.get_width() / 2., p.get_height() + 1.),
                     ha='center', va='center',
                     xytext=(0, 3),
                     textcoords='offset points')
@@ -72,7 +72,7 @@ if __name__ == '__main__':
     df.replace('ils', 'ILS', inplace=True)
     ax = sns.lineplot(x='Perturbation', y='epsilon', data=df, ci='sd', hue='Method')
     ax.set(ylabel='Epsilon metric')
-    ax.set(xlabel='Iterations')
+    ax.set(xlabel='Perturbation')
     ax.set_ylim(-0.01, 1.5)
 
     plot_name = f"{path_plots}/pert_{file}"
@@ -109,10 +109,10 @@ if __name__ == '__main__':
     results.replace('mls', 'MLS', inplace=True)
     ax = sns.barplot(x='Repetitions', y='Runtime', hue='Method', data=results, ci='sd')
     ax.set(ylabel='Average runtime (s)')
-    ax.set_ylim(0, 25)
+    ax.set_ylim(0, 15)
     for p in ax.patches:
         ax.annotate(format(p.get_height(), '.1f'),
-                    (p.get_x() + p.get_width() / 2., p.get_height() + 2.5),
+                    (p.get_x() + p.get_width() / 2., p.get_height() + 1.),
                     ha='center', va='center',
                     xytext=(0, 1),
                     textcoords='offset points')
@@ -120,7 +120,8 @@ if __name__ == '__main__':
     plt.savefig(plot_name + ".pdf")
     plt.clf()
 
-    ls = 0.2359
+    ls = 0.8401
+    #ls = 0.2359
     #ls = 1.1849
     #ls = 0.4806
 

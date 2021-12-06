@@ -18,7 +18,7 @@ plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
 if __name__ == '__main__':
 
-    params = {'method': 'PVI', 'novec': 20, 'states': 10, 'obj': 2, 'act': 2, \
+    params = {'method': 'PQL', 'novec': 30, 'states': 10, 'obj': 2, 'act': 2, \
               'suc': 4, 'seed': 42, 'exp_seed': 1, 'opt': 'ils', 'reps': 10, 'batch': 32}
 
     path_data = f'results/'
@@ -53,10 +53,10 @@ if __name__ == '__main__':
     results.replace('mls', 'MLS', inplace=True)
     ax = sns.barplot(x='Method', y='Runtime', data=results, ci='sd')
     ax.set(ylabel='Average runtime (s)')
-    ax.set_ylim(0, 10)
+    ax.set_ylim(0, 15)
     for p in ax.patches:
         ax.annotate(format(p.get_height(), '.1f'),
-                       (p.get_x() + p.get_width() / 2., p.get_height()+0.7),
+                       (p.get_x() + p.get_width() / 4., p.get_height()+0.7),
                        ha='center', va='center',
                        xytext=(0, 3),
                        textcoords='offset points')
