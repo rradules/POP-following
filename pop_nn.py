@@ -49,7 +49,7 @@ class POP_NN_SDST(nn.Module):
     def forward(self, x):
         x = x.view(-1, self.d_layer[0])
         for layer in self.lins[:-1]:
-            x = F.leaky_relu(layer(x), 0.1)
+            x = F.leaky_relu(layer(x), 0.2)
         return self.lins[-1](x)
 
 
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     parser.add_argument('-seed', type=int, default=42, help="seed")
     parser.add_argument('-method', type=str, default='PQL', help="method")
     parser.add_argument('-novec', type=int, default=10, help="number of vectors")
-    parser.add_argument('-batch', type=int, default=8, help="batch size")
+    parser.add_argument('-batch', type=int, default=16, help="batch size")
     parser.add_argument('-epoch', type=int, default=3000, help="epochs")
     parser.add_argument('-nnl', help='NN layer structure', type=lambda s: [int(item) for item in s.split(',')])
 
