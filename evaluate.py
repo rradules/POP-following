@@ -84,7 +84,7 @@ def eval_POP_NN(env, s_prev, a_prev, v_prev):
     with torch.no_grad():
         while not done:
             s_next, r_next, done, _ = env.step(a_prev)
-            print(s_next, r_next, done)
+            #print(s_next, r_next, done)
             ret_vector += cur_disc * r_next
             cur_disc *= gamma
             # print(s_prev, a_prev, s_next, r_next, done)
@@ -95,12 +95,12 @@ def eval_POP_NN(env, s_prev, a_prev, v_prev):
             N = (N - d_min) / (d_max - d_min)
             inputNN = [s_prev / num_states, a_prev / num_actions, s_next / num_states]
             inputNN.extend(N)
-            print(f'NNinput {inputNN}')
+            #print(f'NNinput {inputNN}')
             v_next = model.forward(torch.tensor(inputNN, dtype=torch.float32))[0].numpy()
-            print(v_next)
+            #print(v_next)
             v_prev = v_next
             v_next_norm = v_next*(d_max-d_min)+d_min
-            print(v_next_norm)
+            #print(v_next_norm)
             a_prev = select_action(s_next, pcs, objective_columns, v_next_norm)
             s_prev = s_next
 
