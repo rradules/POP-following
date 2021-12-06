@@ -21,13 +21,13 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-states', type=int, default=10, help="number of states")
+    parser.add_argument('-states', type=int, default=110, help="number of states")
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
-    parser.add_argument('-act', type=int, default=2, help="number of actions")
+    parser.add_argument('-act', type=int, default=4, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
     parser.add_argument('-method', type=str, default='PQL', help="method")
-    parser.add_argument('-novec', type=int, default=30, help="number of vectors")
+    parser.add_argument('-novec', type=int, default=15, help="number of vectors")
 
     args = parser.parse_args()
     method = args.method
@@ -59,4 +59,5 @@ if __name__ == '__main__':
                         non_dom_data.append(non_dom_entry)
 
     df = pd.concat(non_dom_data, axis=1).T
+
     df.to_csv(f'{path_data}ND_NN_{method}_{file}.csv', index=False)

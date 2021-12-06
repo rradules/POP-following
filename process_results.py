@@ -1,7 +1,7 @@
 import json
 import matplotlib
 import pandas as pd
-from utils import mkdir_p, multiplicative_epsilon_metric
+from utils import mkdir_p, multiplicative_epsilon_metric, additive_epsilon_metric
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -18,8 +18,8 @@ plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
 if __name__ == '__main__':
 
-    params = {'method': 'PQL', 'novec': 30, 'states': 10, 'obj': 2, 'act': 2, \
-              'suc': 4, 'seed': 42, 'exp_seed': 1, 'opt': 'ils', 'reps': 10, 'batch': 32}
+    params = {'method': 'PQL', 'novec': 15, 'states': 110, 'obj': 2, 'act': 4, \
+              'suc': 4, 'seed': 42, 'exp_seed': 2, 'opt': 'ils', 'reps': 10, 'batch': 8}
 
     path_data = f'results/'
     path_plots = f'plots/'
@@ -39,12 +39,14 @@ if __name__ == '__main__':
 
     for opt_str in ['nn', 'ls', 'mls', 'ils']: #['nn', 'ls', 'mls', 'ils']
         val_mean = results[['Value0', 'Value1']].loc[results['Method'] == opt_str].mean(axis=0).values
-        if params["states"] > 100:
-            val_diff = multiplicative_epsilon_metric(val_mean, v0)
-            print(opt_str, val_diff)
-        else:
-            val_diff = v0 - val_mean
-            print(opt_str, max(0, max(val_diff)))
+        val_diff = additive_epsilon_metric(val_mean, v0)
+        print(opt_str, val_diff)
+        #if params["states"] > 100:
+        #    val_diff = multiplicative_epsilon_metric(val_mean, v0)
+        #    print(opt_str, val_diff)
+        #else:
+        #    val_diff = additive_epsilon_metric(val_mean, v0)
+        #    print(opt_str, val_diff)
 
     ###### PLOTS #########
     results.replace('nn', 'NN', inplace=True)

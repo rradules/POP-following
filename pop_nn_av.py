@@ -61,10 +61,10 @@ if __name__ == '__main__':
     parser.add_argument('-act', type=int, default=4, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
-    parser.add_argument('-method', type=str, default='PQL', help="method")
+    parser.add_argument('-method', type=str, default='PVI', help="method")
     parser.add_argument('-novec', type=int, default=10, help="number of vectors")
-    parser.add_argument('-batch', type=int, default=8, help="batch size")
-    parser.add_argument('-epoch', type=int, default=3000, help="epochs")
+    parser.add_argument('-batch', type=int, default=1, help="batch size")
+    parser.add_argument('-epoch', type=int, default=500, help="epochs")
     parser.add_argument('-nnl', help='NN layer structure', type=lambda s: [int(item) for item in s.split(',')])
 
     args = parser.parse_args()
@@ -80,10 +80,7 @@ if __name__ == '__main__':
     nnl = args.nnl
 
     # Load training data
-    if num_states > 100:
-        data = pd.read_csv(f'{path_data}ND_normNN_{method}_{file}.csv')
-    else:
-        data = pd.read_csv(f'{path_data}ND_NN_{method}_{file}.csv')
+    data = pd.read_csv(f'{path_data}ND_NN_{method}_{file}.csv')
 
     # normalisation for states and actions
     data['s'] = data['s'].values / num_states
@@ -122,10 +119,12 @@ if __name__ == '__main__':
 
     n_epochs = args.epoch
     predict_every = 20
-    min_valid_loss = 100.0
+    min_valid_loss = 900.0
     for epoch in range(n_epochs):
         if epoch % 100 == 0:
             print(epoch)
+        b_num = 0
+        train_loss = 0
         for batch_idx, (data, target) in enumerate(train_loader):
             #if torch.cuda.is_available():
              #   data, labels = data.cuda(), target.cuda()
@@ -134,24 +133,29 @@ if __name__ == '__main__':
             loss = loss_function(output, target)
             loss.backward()
             optimizer.step()
-            train_loss = loss.data
-            # if batch_idx % predict_every == 0:
-            #    print(f'Train Epoch: {epoch}, Loss: {loss.data}')
+            train_loss += loss.data
+            b_num += 1
+        if epoch % 10 == 0:
+            print(f'Train Epoch: {epoch}, Average loss: {train_loss/b_num}')
 
         model.eval()  # Optional when not using Model Specific layer
+        b_num = 0
+        valid_loss = 0
         for batch_idx, (data, target) in enumerate(val_loader):
             #if torch.cuda.is_available():
             #    data, target = data.cuda(), target.cuda()
 
             output = model(data)
             loss = loss_function(output, target)
-            valid_loss = loss.data
+            valid_loss += loss.data
+            b_num += 1
             # if batch_idx % predict_every == 0:
             #    print(f'Epoch {epoch} \t\t Training Loss: {train_loss } '
             #      f'\t\t Validation Loss: {valid_loss }')
 
-            if min_valid_loss > valid_loss:
-                print(f'Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f}) \t Saving The Model')
-                min_valid_loss = valid_loss
-                # Saving State Dict
-                torch.save(model.state_dict(), f'{path_data}ND_model_{batch}_{method}_{file}.pth')
+        valid_loss = valid_loss/b_num
+        if min_valid_loss > valid_loss:
+            print(f'Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f}) \t Saving The Model')
+            min_valid_loss = valid_loss
+            # Saving State Dict
+            torch.save(model.state_dict(), f'{path_data}ND_model_{batch}_{method}_{file}.pth')

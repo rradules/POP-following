@@ -57,10 +57,10 @@ if __name__ == '__main__':
     results.replace('ils', 'ILS', inplace=True)
     ax = sns.barplot(x='Perturbation', y='Runtime', hue='Method', data=results, ci='sd')
     ax.set(ylabel='Average runtime (s)')
-    ax.set_ylim(0, 10)
+    ax.set_ylim(0, 25)
     for p in ax.patches:
         ax.annotate(format(p.get_height(), '.1f'),
-                    (p.get_x() + p.get_width() / 2., p.get_height() + 1.),
+                    (p.get_x() + p.get_width() / 2., p.get_height() + 9.8),
                     ha='center', va='center',
                     xytext=(0, 3),
                     textcoords='offset points')
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     ax = sns.lineplot(x='Perturbation', y='epsilon', data=df, ci='sd', hue='Method')
     ax.set(ylabel='Epsilon metric')
     ax.set(xlabel='Perturbation')
-    ax.set_ylim(-0.01, 1.5)
+    ax.set_ylim(-0.01, 5.)
 
     plot_name = f"{path_plots}/pert_{file}"
     # plt.title(f"Action probabilities - Agent 2")
@@ -109,10 +109,10 @@ if __name__ == '__main__':
     results.replace('mls', 'MLS', inplace=True)
     ax = sns.barplot(x='Repetitions', y='Runtime', hue='Method', data=results, ci='sd')
     ax.set(ylabel='Average runtime (s)')
-    ax.set_ylim(0, 15)
+    ax.set_ylim(0, 30)
     for p in ax.patches:
         ax.annotate(format(p.get_height(), '.1f'),
-                    (p.get_x() + p.get_width() / 2., p.get_height() + 1.),
+                    (p.get_x() + p.get_width() / 3.5, p.get_height() + 11.7),
                     ha='center', va='center',
                     xytext=(0, 1),
                     textcoords='offset points')
@@ -120,8 +120,8 @@ if __name__ == '__main__':
     plt.savefig(plot_name + ".pdf")
     plt.clf()
 
-    ls = 0.8401
-    #ls = 0.2359
+    #ls = 0.8401
+    ls = 14.45
     #ls = 1.1849
     #ls = 0.4806
 

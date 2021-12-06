@@ -85,7 +85,7 @@ if __name__ == '__main__':
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
     parser.add_argument('-exp_seed', type=int, default=1, help="experiment seed")
-    parser.add_argument('-novec', type=int, default=30, help="No of vectors")
+    parser.add_argument('-novec', type=int, default=20, help="No of vectors")
     parser.add_argument('-method', type=str, default='PQL', help="Method")
     parser.add_argument('-noise', type=float, default=0.1, help="The stochasticity in state transitions.")
 
