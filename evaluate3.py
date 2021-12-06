@@ -79,13 +79,13 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-states', type=int, default=20, help="number of states")
+    parser.add_argument('-states', type=int, default=10, help="number of states")
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
-    parser.add_argument('-act', type=int, default=3, help="number of actions")
-    parser.add_argument('-suc', type=int, default=7, help="number of successors")
+    parser.add_argument('-act', type=int, default=2, help="number of actions")
+    parser.add_argument('-suc', type=int, default=4, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
     parser.add_argument('-exp_seed', type=int, default=1, help="experiment seed")
-    parser.add_argument('-novec', type=int, default=5, help="No of vectors")
+    parser.add_argument('-novec', type=int, default=30, help="No of vectors")
     parser.add_argument('-method', type=str, default='PQL', help="Method")
     parser.add_argument('-noise', type=float, default=0.1, help="The stochasticity in state transitions.")
 
@@ -160,60 +160,60 @@ if __name__ == '__main__':
     print(f'min: {np.min(pcs_no)}, max: {np.max(pcs_no)}, average: {np.average(pcs_no)}, s0: {pcs_no[s0]}')
 
 
-
-
-    # Select initial non-dominated value
-    while dom:
-        select = subset.sample()
-        a0 = select['Action'].iloc[0]
-        v0 = select[objective_columns].iloc[0].values
-        dom = is_dominated(v0, cand)
-
-    print(s0, a0, v0)
-    times = 200
-    # 'ls', 'mls', 'ils', 'nn'
-    # opt_str = 'nn'
-    results = []
-    lsrepetitions = [5, 10, 15, 20, 25, 30, 35, 40]
-    #  ['nn', 'ls', 'mls', 'ils']
-    for opt_str in ['mls', 'ils', 'ls']:
-        for lsreps in lsrepetitions:
-            print(f'Running {opt_str} with {lsreps} repetitions.')
-            if opt_str == 'mls':
-                perturb = 1
-                func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=perturb)
-                optimiser = func
-            elif opt_str == 'ils':
-                perturb = 0.3
-                func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=perturb)
-                optimiser = func
-            elif opt_str == 'ls':
-                optimiser = popf_local_search
-
-            acc = np.array([0.0, 0.0])
-            for x in range(times):
-                start = time.time()
-                env.reset()
-                env._state = s0
-                returns = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
-                # print(f'{x+1}: {returns}', flush=True)
-                end = time.time()
-                elapsed_seconds = (end - start)
-                acc = acc + returns
-                if opt_str == 'mls':
-                    results.append(np.append(returns, [x, elapsed_seconds, opt_str, lsreps, perturb]))
-                else:
-                    results.append(np.append(returns, [x, elapsed_seconds, opt_str, lsreps, perturb]))
-            av = acc / times
-            diff = v0 - av
-            l = np.linalg.norm(v0 - av)
-            print(f'{opt_str}, {lsreps}, {perturb}: {l}, {diff}, vec={av}')
-
-    final_result = {'method': opt_str, 'v0': v0.tolist()}
-    json.dump(final_result,
-              open(f'{path_data}comp_results_all_{method}_{file}_exp{args.exp_seed}_reps_all.json', "w"))
-
-    columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method', 'Repetitions', 'Perturbation']
-    df = pd.DataFrame(results, columns=columns)
-    # df.to_csv(f'{path_data}results_{opt_str}_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
-    df.to_csv(f'{path_data}comp_results_all_{method}_{file}_exp{args.exp_seed}_reps_all.csv', index=False)
+    #
+    #
+    # # Select initial non-dominated value
+    # while dom:
+    #     select = subset.sample()
+    #     a0 = select['Action'].iloc[0]
+    #     v0 = select[objective_columns].iloc[0].values
+    #     dom = is_dominated(v0, cand)
+    #
+    # print(s0, a0, v0)
+    # times = 200
+    # # 'ls', 'mls', 'ils', 'nn'
+    # # opt_str = 'nn'
+    # results = []
+    # lsrepetitions = [5, 10, 15, 20, 25, 30, 35, 40]
+    # #  ['nn', 'ls', 'mls', 'ils']
+    # for opt_str in ['mls', 'ils', 'ls']:
+    #     for lsreps in lsrepetitions:
+    #         print(f'Running {opt_str} with {lsreps} repetitions.')
+    #         if opt_str == 'mls':
+    #             perturb = 1
+    #             func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=perturb)
+    #             optimiser = func
+    #         elif opt_str == 'ils':
+    #             perturb = 0.3
+    #             func = lambda a, b, c: popf_iter_local_search(a, b, c, reps=lsreps, pertrub_p=perturb)
+    #             optimiser = func
+    #         elif opt_str == 'ls':
+    #             optimiser = popf_local_search
+    #
+    #         acc = np.array([0.0, 0.0])
+    #         for x in range(times):
+    #             start = time.time()
+    #             env.reset()
+    #             env._state = s0
+    #             returns = rollout(env, s0, a0, v0, pcs, gamma, optimiser=optimiser)
+    #             # print(f'{x+1}: {returns}', flush=True)
+    #             end = time.time()
+    #             elapsed_seconds = (end - start)
+    #             acc = acc + returns
+    #             if opt_str == 'mls':
+    #                 results.append(np.append(returns, [x, elapsed_seconds, opt_str, lsreps, perturb]))
+    #             else:
+    #                 results.append(np.append(returns, [x, elapsed_seconds, opt_str, lsreps, perturb]))
+    #         av = acc / times
+    #         diff = v0 - av
+    #         l = np.linalg.norm(v0 - av)
+    #         print(f'{opt_str}, {lsreps}, {perturb}: {l}, {diff}, vec={av}')
+    #
+    # final_result = {'method': opt_str, 'v0': v0.tolist()}
+    # json.dump(final_result,
+    #           open(f'{path_data}comp_results_all_{method}_{file}_exp{args.exp_seed}_reps_all.json', "w"))
+    #
+    # columns = ['Value0', 'Value1', 'Rollout', 'Runtime', 'Method', 'Repetitions', 'Perturbation']
+    # df = pd.DataFrame(results, columns=columns)
+    # # df.to_csv(f'{path_data}results_{opt_str}_{method}_{file}_exp{args.exp_seed}_reps{args.reps}.csv', index=False)
+    # df.to_csv(f'{path_data}comp_results_all_{method}_{file}_exp{args.exp_seed}_reps_all.csv', index=False)

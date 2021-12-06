@@ -10,16 +10,15 @@ matplotlib.rcParams['ps.fonttype'] = 42
 
 sns.set()
 sns.despine()
-sns.set_context("paper", rc={"font.size": 18, "axes.labelsize": 18, "xtick.labelsize": 15, "ytick.labelsize": 15,
+sns.set_context(rc={"font.size": 18, "axes.labelsize": 18, "xtick.labelsize": 15, "ytick.labelsize": 15,
                              "legend.fontsize": 16})
 sns.set_style('white', {'axes.edgecolor': "0.5", "pdf.fonttype": 42})
 plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
-
 if __name__ == '__main__':
 
-    params = {'method': 'PVI', 'novec': 20, 'states': 10, 'obj': 2, 'act': 2, \
-              'suc': 4, 'seed': 42, 'exp_seed': 1, 'opt': 'ils', 'reps': 10}
+    params = {'method': 'PVI', 'novec': 5, 'states': 20, 'obj': 2, 'act': 3, \
+              'suc': 7, 'seed': 42, 'exp_seed': 1, 'opt': 'ils', 'reps': 10, 'batch': 32}
 
     path_data = f'results/'
     path_plots = f'plots/'
@@ -27,14 +26,16 @@ if __name__ == '__main__':
     file = f'{params["method"]}_s{params["states"]}_a{params["act"]}_o{params["obj"]}_' \
            f'ss{params["suc"]}_seed{params["seed"]}_novec{params["novec"]}_exp{params["exp_seed"]}'
 
-    with open(f'{path_data}comp_results_{params["opt"]}_{file}_reps{params["reps"]}.json', "r") as read_file:
+    with open(f'{path_data}ND_results_all_{file}_{params["batch"]}_reps{params["reps"]}.json', "r") as read_file:
         info = json.load(read_file)
     v0 = info['v0']
 
-    results = pd.read_csv(f'{path_data}comp_results_{file}_reps{params["reps"]}.csv')
+    # results = pd.read_csv(f'{path_data}comp_results_{file}_reps{params["reps"]}.csv')
+    results = pd.read_csv(f'{path_data}ND_results_all_{file}_{params["batch"]}_reps{params["reps"]}.csv')
+    results = results.loc[(results['Method'] == 'ils') & (results['Repetitions'] == 10)]
     perturbations = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     toplot = []
-    for opt_str in ['ils']: #['nn', 'ls', 'mls', 'ils']
+    for opt_str in ['ils']:  # ['nn', 'ls', 'mls', 'ils']
         for perturb in perturbations:
             val_mean = results[['Value0', 'Value1']].loc[results['Perturbation'] == perturb].mean(axis=0).values
             val_diff = v0 - val_mean
@@ -56,23 +57,23 @@ if __name__ == '__main__':
     results.replace('ils', 'ILS', inplace=True)
     ax = sns.barplot(x='Perturbation', y='Runtime', hue='Method', data=results, ci='sd')
     ax.set(ylabel='Average runtime (s)')
-    ax.set_ylim(0, 10)
+    ax.set_ylim(0, 20)
     for p in ax.patches:
         ax.annotate(format(p.get_height(), '.1f'),
-                       (p.get_x() + p.get_width() / 2., p.get_height()+1),
-                       ha='center', va='center',
-                       xytext=(0, 3),
-                       textcoords='offset points')
+                    (p.get_x() + p.get_width() / 2., p.get_height() + 2),
+                    ha='center', va='center',
+                    xytext=(0, 3),
+                    textcoords='offset points')
     plot_name = f"{path_plots}/{file}_ils_runtime"
     plt.savefig(plot_name + ".pdf")
     plt.clf()
 
     ###### PLOTS #########
     df.replace('ils', 'ILS', inplace=True)
-    ax = sns.lineplot(x='Perturbation', y='epsilon',  data=df, ci='sd', hue='Method')
+    ax = sns.lineplot(x='Perturbation', y='epsilon', data=df, ci='sd', hue='Method')
     ax.set(ylabel='Epsilon metric')
     ax.set(xlabel='Iterations')
-    ax.set_ylim(-0.01, 2.3)
+    ax.set_ylim(-0.01, 1.5)
 
     plot_name = f"{path_plots}/pert_{file}"
     # plt.title(f"Action probabilities - Agent 2")
@@ -80,14 +81,17 @@ if __name__ == '__main__':
 
     plt.clf()
 
-    with open(f'{path_data}comp_results_all_{file}_reps_all.json', "r") as read_file:
-        info = json.load(read_file)
-    v0 = info['v0']
+    # with open(f'{path_data}comp_results_all_{file}_reps_all.json', "r") as read_file:
+    #    info = json.load(read_file)
+    # v0 = info['v0']
 
-    results = pd.read_csv(f'{path_data}comp_results_all_{file}_reps_all.csv')
-    lsrepetitions = [5, 10, 15, 20, 25, 30]
+    # results = pd.read_csv(f'{path_data}comp_results_all_{file}_reps_all.csv')
+    results = pd.read_csv(f'{path_data}ND_results_all_{file}_{params["batch"]}_reps{params["reps"]}.csv')
+    results = results.loc[((results['Method'] == 'ils') & (results['Perturbation'] == 0.3)) |
+                          (results['Method'] == 'mls')]
+    lsrepetitions = [5, 10, 15, 20, 25, 30, 35, 40]
     toplot2 = []
-    for opt_str in ['mls', 'ils']: #['nn', 'ls', 'mls', 'ils']
+    for opt_str in ['mls', 'ils']:  # ['nn', 'ls', 'mls', 'ils']
         for reps in lsrepetitions:
             val_mean = results[['Value0', 'Value1']].loc[(results['Repetitions'] == reps)
                                                          & (results['Method'] == opt_str)].mean(axis=0).values
@@ -100,20 +104,24 @@ if __name__ == '__main__':
     df.to_csv(f'{path_data}mls_ils_reps_{file}.csv', index=False)
 
     ###### PLOTS #########
+    sns.set_context(rc={"font.size": 14})
     results.replace('ils', 'ILS', inplace=True)
     results.replace('mls', 'MLS', inplace=True)
     ax = sns.barplot(x='Repetitions', y='Runtime', hue='Method', data=results, ci='sd')
     ax.set(ylabel='Average runtime (s)')
-    ax.set_ylim(0, 20)
+    ax.set_ylim(0, 25)
     for p in ax.patches:
         ax.annotate(format(p.get_height(), '.1f'),
-                        (p.get_x() + p.get_width() / 2., p.get_height()+2),
-                        ha='center', va='center',
-                        xytext=(0, 1),
-                        textcoords='offset points')
+                    (p.get_x() + p.get_width() / 2., p.get_height() + 2.5),
+                    ha='center', va='center',
+                    xytext=(0, 1),
+                    textcoords='offset points')
     plot_name = f"{path_plots}/{file}_mls_ils_runtime"
     plt.savefig(plot_name + ".pdf")
     plt.clf()
+
+    ls = 1.1849
+    #ls = 0.4806
 
     ###### PLOTS #########
     df.replace('ils', 'ILS', inplace=True)
@@ -121,7 +129,11 @@ if __name__ == '__main__':
     ax = sns.lineplot(x='Repetitions', y='epsilon', data=df, ci='sd', hue='Method')
     ax.set(ylabel='Epsilon metric')
     ax.set(xlabel='Iterations')
-    ax.set_ylim(-0.01, 2.3)
+    ax.set_ylim(-0.01, 1.5)
+    ax.set_xlim(5, 40)
+
+    ax.axhline(ls, linestyle='--', color='g', label='LS')
+    plt.legend()
 
     plot_name = f"{path_plots}/reps_{file}"
     # plt.title(f"Action probabilities - Agent 2")

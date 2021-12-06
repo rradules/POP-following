@@ -18,8 +18,8 @@ plt.gcf().subplots_adjust(bottom=0.15, left=0.14)
 
 if __name__ == '__main__':
 
-    params = {'method': 'PQL', 'novec': 10, 'states': 110, 'obj': 2, 'act': 4, \
-              'suc': 4, 'seed': 42, 'exp_seed': 1, 'opt': 'ils', 'reps': 10, 'batch': 8}
+    params = {'method': 'PVI', 'novec': 5, 'states': 20, 'obj': 2, 'act': 3, \
+              'suc': 7, 'seed': 42, 'exp_seed': 1, 'opt': 'ils', 'reps': 10, 'batch': 32}
 
     path_data = f'results/'
     path_plots = f'plots/'
@@ -27,11 +27,15 @@ if __name__ == '__main__':
     file = f'{params["method"]}_s{params["states"]}_a{params["act"]}_o{params["obj"]}_' \
            f'ss{params["suc"]}_seed{params["seed"]}_novec{params["novec"]}_exp{params["exp_seed"]}'
 
-    with open(f'{path_data}ND_results_{params["opt"]}_{file}_{params["batch"]}_reps{params["reps"]}.json', "r") as read_file:
+    with open(f'{path_data}ND_results_all_{file}_{params["batch"]}_reps{params["reps"]}.json', "r") as read_file:
         info = json.load(read_file)
     v0 = info['v0']
 
     results = pd.read_csv(f'{path_data}ND_results_all_{file}_{params["batch"]}_reps{params["reps"]}.csv')
+    results = results.loc[(results['Method'].isin(['nn','ls']) |
+                           ((results['Method'] == 'mls') & (results['Repetitions'] == 10)) |
+                           ((results['Method'] == 'ils') & (results['Repetitions'] == 10) &
+                            (results['Perturbation'] == 0.3)))]
 
     for opt_str in ['nn', 'ls', 'mls', 'ils']: #['nn', 'ls', 'mls', 'ils']
         val_mean = results[['Value0', 'Value1']].loc[results['Method'] == opt_str].mean(axis=0).values
@@ -43,7 +47,7 @@ if __name__ == '__main__':
             print(opt_str, max(0, max(val_diff)))
 
     ###### PLOTS #########
-    results.replace('nn', 'POP-NN', inplace=True)
+    results.replace('nn', 'NN', inplace=True)
     results.replace('ls', 'LS', inplace=True)
     results.replace('ils', 'ILS', inplace=True)
     results.replace('mls', 'MLS', inplace=True)
@@ -52,7 +56,7 @@ if __name__ == '__main__':
     ax.set_ylim(0, 10)
     for p in ax.patches:
         ax.annotate(format(p.get_height(), '.1f'),
-                       (p.get_x() + p.get_width() / 2., p.get_height()+3.5),
+                       (p.get_x() + p.get_width() / 2., p.get_height()+0.7),
                        ha='center', va='center',
                        xytext=(0, 3),
                        textcoords='offset points')
