@@ -112,10 +112,11 @@ if __name__ == '__main__':
     # init NN
     nnl.insert(0, d_in)
     nnl.append(d_out)
-    if num_states < 100:
-        model = POP_NN(nnl).to(device)
-    else:
-        model = POP_NN_SDST(nnl).to(device)
+    model = POP_NN(nnl).to(device)
+    #if num_states < 100:
+    #    model = POP_NN(nnl).to(device)
+    #else:
+    #    model = POP_NN_SDST(nnl).to(device)
 
     loss_function = nn.MSELoss().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)

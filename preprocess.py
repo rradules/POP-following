@@ -52,11 +52,14 @@ if __name__ == '__main__':
                 #print(s, a, ns)
                 subset = nn.loc[(nn['s'] == s) & (nn['a'] == a) & (nn['ns'] == ns)]
                 cand = subset[val_columns].to_numpy()
+                #print(cand)
                 if len(cand) > 0:
                     non_dom = get_non_dominated(cand)
+                    #print(non_dom)
 
                     for el in non_dom:
-                        non_dom_entry = nn.loc[(nn['vs0'] == el[0]) & (nn['vs1'] == el[1])].iloc[0]
+                        non_dom_entry = nn.loc[(nn['s'] == s) & (nn['a'] == a) & (nn['ns'] == ns) & (nn['vs0'] == el[0])
+                                               & (nn['vs1'] == el[1])].iloc[0]
                         non_dom_data.append(non_dom_entry)
 
     df = pd.concat(non_dom_data, axis=1).T
