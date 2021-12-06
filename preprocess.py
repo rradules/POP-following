@@ -26,8 +26,8 @@ if __name__ == '__main__':
     parser.add_argument('-act', type=int, default=4, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
-    parser.add_argument('-method', type=str, default='PQL', help="method")
-    parser.add_argument('-novec', type=int, default=15, help="number of vectors")
+    parser.add_argument('-method', type=str, default='PVI', help="method")
+    parser.add_argument('-novec', type=int, default=10, help="number of vectors")
 
     args = parser.parse_args()
     method = args.method
@@ -49,6 +49,7 @@ if __name__ == '__main__':
     for s in range(args.states):
         for a in range(args.act):
             for ns in range(args.states):
+                #print(s, a, ns)
                 subset = nn.loc[(nn['s'] == s) & (nn['a'] == a) & (nn['ns'] == ns)]
                 cand = subset[val_columns].to_numpy()
                 if len(cand) > 0:

@@ -80,7 +80,6 @@ def eval_POP_NN(env, s_prev, a_prev, v_prev):
     model.eval()
     ret_vector = np.zeros(num_objectives)
     cur_disc = 1
-
     done = False
     with torch.no_grad():
         while not done:
@@ -88,15 +87,18 @@ def eval_POP_NN(env, s_prev, a_prev, v_prev):
             ret_vector += cur_disc * r_next
             cur_disc *= gamma
             # print(s_prev, a_prev, s_next, r_next, done)
+            v_prev = v_prev*(d_max-d_min) + d_min
             N = (v_prev - r_next) / gamma
             if method == 'PVI':
                 N = np.around(N, decimals=2)
+            N = (N - d_min) / (d_max - d_min)
             inputNN = [s_prev / num_states, a_prev / num_actions, s_next / num_states]
             inputNN.extend(N)
             #print(f'NNinput {inputNN}')
             v_next = model.forward(torch.tensor(inputNN, dtype=torch.float32))[0].numpy()
             v_prev = v_next
-            a_prev = select_action(s_next, pcs, objective_columns, v_next)
+            v_next_norm = v_next*(d_max-d_min)+d_min
+            a_prev = select_action(s_next, pcs, objective_columns, v_next_norm)
             s_prev = s_next
 
     # print(v0, ret_vector)
@@ -173,6 +175,11 @@ if __name__ == '__main__':
 
     with open(f'{path_data}MOMDP_{method}_{file}.json', "r") as read_file:
         env_info = json.load(read_file)
+
+    with open(f'{path_data}ND_normNN_{method}_{file}.json', "r") as read_file:
+        norm_info = json.load(read_file)
+    d_min = norm_info['min']
+    d_max = norm_info['max']
 
     transition_function = env_info['transition']
     env._transition_function = np.array(transition_function)
