@@ -176,10 +176,14 @@ if __name__ == '__main__':
     with open(f'{path_data}MOMDP_{method}_{file}.json', "r") as read_file:
         env_info = json.load(read_file)
 
-    with open(f'{path_data}ND_normNN_{method}_{file}.json', "r") as read_file:
-        norm_info = json.load(read_file)
-    d_min = norm_info['min']
-    d_max = norm_info['max']
+    if num_states > 100:
+        with open(f'{path_data}ND_normNN_{method}_{file}.json', "r") as read_file:
+            norm_info = json.load(read_file)
+        d_min = norm_info['min']
+        d_max = norm_info['max']
+    else:
+        d_min = 0
+        d_max = 1
 
     transition_function = env_info['transition']
     env._transition_function = np.array(transition_function)
