@@ -253,6 +253,7 @@ def multiplicative_epsilon_metric(new_vec, pareto_vec):
     :param new_vec: The new vector.
     :param pareto_vec: The vector on the Pareto front.
     :return: The multiplicative epsilon metric between the two vectors. Bounded by the interval [0, inf).
+    Note that this does not go well with negative values.
     """
     percentage_change = (pareto_vec - new_vec) / np.abs(new_vec)
     max_change = np.max(percentage_change)
