@@ -240,9 +240,7 @@ def additive_epsilon_metric(new_vec, pareto_vec):
     :return: The additive epsilon metric between the two vectors. Bounded by the interval [0, inf).
     """
     difference = pareto_vec - new_vec
-    print(difference)
     max_diff = np.max(difference)
-    print(max_diff)
     epsilon = max(0, max_diff)
     return epsilon
 
