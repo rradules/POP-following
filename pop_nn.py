@@ -140,19 +140,21 @@ if __name__ == '__main__':
             #    print(f'Train Epoch: {epoch}, Loss: {loss.data}')
 
         model.eval()  # Optional when not using Model Specific layer
+        b_num = 0
+        valid_loss = 0
         for batch_idx, (data, target) in enumerate(val_loader):
             #if torch.cuda.is_available():
             #    data, target = data.cuda(), target.cuda()
-
             output = model(data)
             loss = loss_function(output, target)
-            valid_loss = loss.data
+            valid_loss += loss.data
+            b_num += 1
             # if batch_idx % predict_every == 0:
             #    print(f'Epoch {epoch} \t\t Training Loss: {train_loss } '
             #      f'\t\t Validation Loss: {valid_loss }')
-
-            if min_valid_loss > valid_loss:
-                print(f'Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f}) \t Saving The Model')
-                min_valid_loss = valid_loss
-                # Saving State Dict
-                torch.save(model.state_dict(), f'{path_data}ND_model_{batch}_{method}_{file}.pth')
+        valid_loss = valid_loss/b_num
+        if min_valid_loss > valid_loss:
+            print(f'Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f}) \t Saving The Model')
+            min_valid_loss = valid_loss
+            # Saving State Dict
+            torch.save(model.state_dict(), f'{path_data}ND_model_{batch}_{method}_{file}.pth')
