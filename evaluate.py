@@ -200,6 +200,15 @@ if __name__ == '__main__':
     pcs[['Action', 'State']] = pcs[['Action', 'State']].astype('int32')
 
     s0 = env.reset()
+
+    #Stats on the PCS
+    pcs_no = np.zeros(num_states)
+    for s in range(num_states):
+        subset = pcs[['Action', 'Objective 0', 'Objective 1']].loc[pcs['State'] == s]
+        cand = [subset[objective_columns].to_numpy()]
+        pcs_no[s] = len(cand[0])
+    print(f'min: {np.min(pcs_no)}, max: {np.max(pcs_no)}, average: {np.average(pcs_no)}, s0: {pcs_no[s0]}')
+
     dom = True
     subset = pcs[['Action', 'Objective 0', 'Objective 1']].loc[pcs['State'] == s0]
     cand = [subset[objective_columns].to_numpy()]
