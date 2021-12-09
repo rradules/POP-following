@@ -89,6 +89,25 @@ def load_model(model_filename, layers, activation):
     return model
 
 
+def preprocess_pcs(pcs, objective_columns):
+    """
+    This function preprocesses the PCS and calculates statistics on the PCS sizes.
+    :param pcs: The input PCS.
+    :param objective_columns: The names of the objective columns.
+    :return: The processed PCS as well as the minimum, maximum, mean and start state PCS size.
+    """
+    pcs[objective_columns] = pcs[objective_columns].apply(pd.to_numeric)
+    pcs[['Action', 'State']] = pcs[['Action', 'State']].astype('int32')
+
+    state_counts = pcs['State'].value_counts()
+    min_pcs = state_counts.min()
+    max_pcs = state_counts.max()
+    avg_pcs = state_counts.mean()
+    start_state_pcs = state_counts[0]
+
+    return pcs, min_pcs, max_pcs, avg_pcs, start_state_pcs
+
+
 def setup_experiment(env, pcs, objective_columns):
     """
     This function setups an experiment.
@@ -363,7 +382,7 @@ if __name__ == '__main__':
 
     set_seeds(exp_seed)  # Set seed for random number generation.
 
-    # Get the files.
+    # Setup different files.
     dir = f'results'
     filename = f's{args.states}_a{args.act}_o{args.obj}_ss{args.suc}_seed{args.seed}_novec{novec}'
 
@@ -374,6 +393,8 @@ if __name__ == '__main__':
         env_info = json.load(read_file)
 
     pcs = pd.read_csv(f'{dir}/PCS_{method}_{filename}.csv')
+    objective_columns = ['Objective 0', 'Objective 1']
+    pcs, min_pcs, max_pcs, mean_pcs, start_state_pcs = preprocess_pcs(pcs, objective_columns)
 
     # Set random MOMDPs to the original transition and reward functions.
     transition_function = env_info['transition']
@@ -393,24 +414,23 @@ if __name__ == '__main__':
         d_min = 0
         d_max = 1
 
-    # Setup PCS correctly.
-    objective_columns = ['Objective 0', 'Objective 1']
-    pcs[objective_columns] = pcs[objective_columns].apply(pd.to_numeric)
-    pcs[['Action', 'State']] = pcs[['Action', 'State']].astype('int32')
-
     # Setup results files.
     res_cols = ['Trial', 'Episode', 'Optimiser', 'Value0', 'Value1', 'Runtime', 'Score', 'Repetitions', 'Perturbation']
     results_file = f'{dir}/results_{method}_{filename}_exp{exp_seed}_{batch}.csv'
     exp_columns = ['Trial', 'Value0', 'Value1']
-    exp_file = f'{dir}/experiment_{method}_{filename}_exp{exp_seed}_{batch}.csv'
-    exp_data = []
+    exp_file = f'{dir}/experiment_{method}_{filename}_exp{exp_seed}_{batch}.json'
+    exp_data = {'min': float(min_pcs),
+                'max': float(max_pcs),
+                'mean': float(mean_pcs),
+                's0': float(start_state_pcs),
+                'values': []}
 
     for trial in range(trials):
         print(f'Starting trial {trial}')
         state, action, value_vector = setup_experiment(env, pcs, objective_columns)
         print(f'From state {state} with action {action} selected value vector: {value_vector}')
 
-        exp_data.append([trial, value_vector[0], value_vector[1]])
+        exp_data['values'] = value_vector.tolist()
         logs_frames = []
 
         regular_logs = run_regular_experiment(env, state, action, value_vector)
@@ -430,3 +450,6 @@ if __name__ == '__main__':
 
         print(f'Finished trial {trial}')
         print(f'--------------------------------------------------------------------------------')
+
+    with open(exp_file, 'w') as f:
+        json.dump(exp_data, f)
