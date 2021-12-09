@@ -237,12 +237,12 @@ def additive_epsilon_metric(new_vec, pareto_vec):
     This function returns the additive epsilon metric between a new vector and a vector on the known Pareto front.
     :param new_vec: The new vector.
     :param pareto_vec: The vector on the Pareto front.
-    :return: The additive epsilon metric between the two vectors. Bounded by the interval [0, inf).
+    :return: The difference and additive epsilon metric between the two vectors. Bounded by the interval [0, inf).
     """
     difference = pareto_vec - new_vec
     max_diff = np.max(difference)
     epsilon = max(0, max_diff)
-    return epsilon
+    return difference, epsilon
 
 
 def multiplicative_epsilon_metric(new_vec, pareto_vec):
