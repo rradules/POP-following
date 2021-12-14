@@ -195,7 +195,8 @@ def rollout_nn(env, model, state, action, follow_vector, max_time=200):
         n_vector = (follow_vector - reward_vec) / gamma
         norm_n_vector = (n_vector - d_min) / (d_max - d_min)
 
-        input_nn = [state / num_states, action / num_actions, next_state / num_states]  # Todo: states and actions should be encoded smarter.
+        input_nn = [state / num_states, action / num_actions,
+                    next_state / num_states]  # Todo: states and actions should be encoded smarter.
         input_nn.extend(norm_n_vector)
         norm_follow_vector = model.forward(torch.tensor(input_nn, dtype=torch.float32))[0].detach().numpy()
         follow_vector = norm_follow_vector * (d_max - d_min) + d_min
@@ -352,7 +353,8 @@ if __name__ == '__main__':
     parser.add_argument('-method', type=str, default='PVI', help="Method")
     parser.add_argument('-batch', type=int, default=32, help="batch size")
     parser.add_argument('-noise', type=float, default=0.1, help="The stochasticity in state transitions.")
-    parser.add_argument('-layers', nargs='+', type=int, default=[16, 8, 4],help='Number of nodes per layer in the neural network.')
+    parser.add_argument('-layers', nargs='+', type=int, default=[16, 8, 4],
+                        help='Number of nodes per layer in the neural network.')
 
     args = parser.parse_args()
 
