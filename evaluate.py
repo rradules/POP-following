@@ -8,19 +8,19 @@ import argparse
 import pandas as pd
 import numpy as np
 
-from pop_nn import POP_NN, POP_NN_SDST
+from pop_nn import load_network
 from utils import is_dominated, additive_epsilon_metric
 from pop_ls import popf_local_search, popf_iter_local_search, toStavs
 from gym.envs.registration import register
 
 register(
     id='RandomMOMDP-v0',
-    entry_point='randommomdp:RandomMOMDP',
+    entry_point='envs.randommomdp:RandomMOMDP',
 )
 
 register(
     id='DeepSeaTreasure-v0',
-    entry_point='deep_sea_treasure:DeepSeaTreasureEnv',
+    entry_point='envs.deep_sea_treasure:DeepSeaTreasureEnv',
 )
 
 
@@ -66,23 +66,14 @@ def set_seeds(seed):
     torch.manual_seed(seed)
 
 
-def load_model(model_filename, layers, activation):
+def load_model(model_filename, model_str):
     """
     This function loads a neural network and sets it to the correct mode.
     :param model_filename: The filename for the neural network parameters.
-    :param layers: The number of nodes per layer as a list.
-    :param activation: The type of activation function to use in the model.
+    :param model_str: The model architecture to use.
     :return: The neural network.
     """
-    d_in = num_objectives + 3  # Input dimensions for the neural network.
-    d_out = num_objectives  # Output dimensions for the neural network.
-    layers.insert(0, d_in)
-    layers.append(d_out)
-
-    if activation == 'ReLU':
-        model = POP_NN(layers)
-    else:
-        model = POP_NN_SDST(layers)
+    model = load_network(model_str, num_objectives)
     model.load_state_dict(torch.load(model_filename))
     model.eval()
     torch.no_grad()
@@ -195,10 +186,9 @@ def rollout_nn(env, model, state, action, follow_vector, max_time=200):
         n_vector = (follow_vector - reward_vec) / gamma
         norm_n_vector = (n_vector - d_min) / (d_max - d_min)
 
-        input_nn = [state / num_states, action / num_actions,
-                    next_state / num_states]  # Todo: states and actions should be encoded smarter.
+        input_nn = [state, action, next_state]
         input_nn.extend(norm_n_vector)
-        norm_follow_vector = model.forward(torch.tensor(input_nn, dtype=torch.float32))[0].detach().numpy()
+        norm_follow_vector = model(torch.tensor([input_nn], dtype=torch.float32))[0].detach().numpy()
         follow_vector = norm_follow_vector * (d_max - d_min) + d_min
         action = select_action(next_state, pcs, objective_columns, follow_vector)
         state = next_state
@@ -341,20 +331,20 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
+    parser.add_argument('-dir', type=str, default='results/PVI/SDST', help='The directory for all files')
     parser.add_argument('-trials', type=int, default=1, help='Number of trials to run.')
-    parser.add_argument('-episodes', type=int, default=1, help='The number of episodes to run each trial.')
+    parser.add_argument('-episodes', type=int, default=100, help='The number of episodes to run each trial.')
+    parser.add_argument('-normalise', type=bool, default=False, help='Normalise input data')
     parser.add_argument('-states', type=int, default=110, help="number of states")
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
     parser.add_argument('-act', type=int, default=4, help="number of actions")
     parser.add_argument('-suc', type=int, default=4, help="number of successors")
     parser.add_argument('-seed', type=int, default=42, help="seed")
-    parser.add_argument('-exp_seed', type=int, default=1, help="experiment seed")
+    parser.add_argument('-exp_seed', type=int, default=2, help="experiment seed")
+    parser.add_argument('-model_str', type=str, default='MlpSmall', help='The model architecture to use for evaluation')
     parser.add_argument('-novec', type=int, default=10, help="No of vectors")
-    parser.add_argument('-method', type=str, default='PVI', help="Method")
-    parser.add_argument('-batch', type=int, default=32, help="batch size")
     parser.add_argument('-noise', type=float, default=0.1, help="The stochasticity in state transitions.")
-    parser.add_argument('-layers', nargs='+', type=int, default=[16, 8, 4],
-                        help='Number of nodes per layer in the neural network.')
+    parser.add_argument('-gamma', type=float, default=1, help='The discount factor for returns.')
 
     args = parser.parse_args()
 
@@ -374,29 +364,30 @@ if __name__ == '__main__':
         num_successors = env.nS
 
     # Extract arguments.
+    res_dir = args.dir
     trials = args.trials
     episodes = args.episodes
-    novec = args.novec
-    method = args.method
-    batch = args.batch
-    layers = args.layers
+    normalise = args.normalise
+    model_str = args.model_str
+    gamma = args.gamme
     exp_seed = args.exp_seed
 
     set_seeds(exp_seed)  # Set seed for random number generation.
 
-    # Setup different files.
-    res_dir = f'results'
-    filename = f's{args.states}_a{args.act}_o{args.obj}_ss{args.suc}_seed{args.seed}_novec{novec}'
-
-    model_filename = f'{res_dir}/model_{batch}_{method}_{filename}.pth'
-    neural_network = load_model(model_filename, layers, 'ReLU')
-
-    with open(f'{res_dir}/MOMDP_{method}_{filename}.json', "r") as read_file:
-        env_info = json.load(read_file)
-
-    pcs = pd.read_csv(f'{res_dir}/PCS_{method}_{filename}.csv')
+    # Load PCS.
+    pcs_file = f'{res_dir}/PCS/pcs.csv'
+    pcs = pd.read_csv(pcs_file)
     objective_columns = ['Objective 0', 'Objective 1']
     pcs, min_pcs, max_pcs, mean_pcs, start_state_pcs = preprocess_pcs(pcs, objective_columns)
+
+    # Load neural network.
+    model_file = f'{res_dir}/models/{model_str}.pth'
+    neural_network = load_model(model_file, model_str)
+
+    # Load environment file.
+    env_file = f'{res_dir}/info.json'
+    with open(env_file, "r") as read_file:
+        env_info = json.load(read_file)
 
     # Set random MOMDPs to the original transition and reward functions.
     transition_function = env_info['transition']
@@ -405,22 +396,20 @@ if __name__ == '__main__':
     env._reward_function = np.array(reward_function)
 
     # Set parameters.
-    if num_states > 100:
-        gamma = 1  # Discount factor
-        with open(f'{res_dir}/normNN_{method}_{filename}.json', "r") as read_file:
+    if normalise:
+        with open(f'{res_dir}/data/normalisation.json', "r") as read_file:
             norm_info = json.load(read_file)
         d_min = norm_info['min']
         d_max = norm_info['max']
     else:
-        gamma = 0.8
         d_min = 0
         d_max = 1
 
     # Setup results files.
     res_cols = ['Trial', 'Episode', 'Optimiser', 'Value0', 'Value1', 'Runtime', 'Score', 'Repetitions', 'Perturbation']
-    results_file = f'{res_dir}/results_{method}_{filename}_exp{exp_seed}_{batch}.csv'
+    results_file = f'{res_dir}/experiment_{exp_seed}.csv'
     exp_columns = ['Trial', 'Value0', 'Value1']
-    exp_file = f'{res_dir}/experiment_{method}_{filename}_exp{exp_seed}_{batch}.json'
+    exp_file = f'{res_dir}/experiment_{exp_seed}.json'
     exp_data = {'min': float(min_pcs),
                 'max': float(max_pcs),
                 'mean': float(mean_pcs),
