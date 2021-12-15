@@ -385,16 +385,16 @@ if __name__ == '__main__':
     set_seeds(exp_seed)  # Set seed for random number generation.
 
     # Setup different files.
-    dir = f'results'
+    res_dir = f'results'
     filename = f's{args.states}_a{args.act}_o{args.obj}_ss{args.suc}_seed{args.seed}_novec{novec}'
 
-    model_filename = f'{dir}/model_{batch}_{method}_{filename}.pth'
+    model_filename = f'{res_dir}/model_{batch}_{method}_{filename}.pth'
     neural_network = load_model(model_filename, layers, 'ReLU')
 
-    with open(f'{dir}/MOMDP_{method}_{filename}.json', "r") as read_file:
+    with open(f'{res_dir}/MOMDP_{method}_{filename}.json', "r") as read_file:
         env_info = json.load(read_file)
 
-    pcs = pd.read_csv(f'{dir}/PCS_{method}_{filename}.csv')
+    pcs = pd.read_csv(f'{res_dir}/PCS_{method}_{filename}.csv')
     objective_columns = ['Objective 0', 'Objective 1']
     pcs, min_pcs, max_pcs, mean_pcs, start_state_pcs = preprocess_pcs(pcs, objective_columns)
 
@@ -407,7 +407,7 @@ if __name__ == '__main__':
     # Set parameters.
     if num_states > 100:
         gamma = 1  # Discount factor
-        with open(f'{dir}/normNN_{method}_{filename}.json', "r") as read_file:
+        with open(f'{res_dir}/normNN_{method}_{filename}.json', "r") as read_file:
             norm_info = json.load(read_file)
         d_min = norm_info['min']
         d_max = norm_info['max']
@@ -418,9 +418,9 @@ if __name__ == '__main__':
 
     # Setup results files.
     res_cols = ['Trial', 'Episode', 'Optimiser', 'Value0', 'Value1', 'Runtime', 'Score', 'Repetitions', 'Perturbation']
-    results_file = f'{dir}/results_{method}_{filename}_exp{exp_seed}_{batch}.csv'
+    results_file = f'{res_dir}/results_{method}_{filename}_exp{exp_seed}_{batch}.csv'
     exp_columns = ['Trial', 'Value0', 'Value1']
-    exp_file = f'{dir}/experiment_{method}_{filename}_exp{exp_seed}_{batch}.json'
+    exp_file = f'{res_dir}/experiment_{method}_{filename}_exp{exp_seed}_{batch}.json'
     exp_data = {'min': float(min_pcs),
                 'max': float(max_pcs),
                 'mean': float(mean_pcs),
