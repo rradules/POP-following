@@ -133,12 +133,11 @@ def print_pcs(pcs):
             print(f'State {state} and action {action}: {repr(set)}')
 
 
-def save_pcs(nd_vectors, file, path_data, num_objectives):
+def save_pcs(path, nd_vectors, num_objectives):
     """
     This function will save the generated pareto coverage set to a CSV file.
+    :param path: directory path for saving the file.
     :param nd_vectors: A set of non-dominated vectors per state.
-    :param file: file name.
-    :param path_data: directory path for saving the file.
     :param num_objectives: number of objectives.
     :return: /
     """
@@ -151,15 +150,14 @@ def save_pcs(nd_vectors, file, path_data, num_objectives):
                 row = [state, action] + list(vector)
                 results.append(row)
     df = pd.DataFrame(results, columns=columns)
-    df.to_csv(f'{path_data}/PCS_{file}.csv', index=False)
+    df.to_csv(f'{path}/pcs.csv', index=False)
 
 
-def save_momdp(path, file, num_states, num_objectives, num_actions, num_successors, seed, transition_function,
+def save_momdp(path, num_states, num_objectives, num_actions, num_successors, seed, transition_function,
                reward_function, epsilon, gamma):
     """
     This function saves all MOMDP info to a JSON file.
     :param path: The directory to save the new file in.
-    :param file: The name of the info file.
     :param num_states: The number of states in the MOMDP.
     :param num_objectives: The number of objectives in the MOMDP.
     :param num_actions: The number of actions in the MOMDP.
@@ -182,16 +180,15 @@ def save_momdp(path, file, num_states, num_objectives, num_actions, num_successo
         'epsilon': epsilon,
         'gamma': gamma
     }
-    json.dump(info, open(f'{path}/MOMDP_{file}.json', "w"))
+    json.dump(info, open(f'{path}/momdp.json', "w"))
 
 
-def save_training_data(dataset, num_objectives, path_data, file):
+def save_training_data(path, dataset, num_objectives):
     """
     This function saves the dataset in a structured way for later use in training a neural network.
+    :param path: The path to the directory for saving the data.
     :param dataset: The created dataset from PVI.
     :param num_objectives: The number of objectives.
-    :param path_data: The path to the directory for saving the data.
-    :param file: The filename to save it as.
     :return: /
     """
     columns = ['s', 'a', 'ns']
@@ -209,7 +206,7 @@ def save_training_data(dataset, num_objectives, path_data, file):
         data.append(s + a + ns + N + vs)
 
     df = pd.DataFrame(data, columns=columns)
-    df.to_csv(f'{path_data}/NN_{file}.csv', index=False)
+    df.to_csv(f'{path}/training_data.csv', index=False)
 
 
 def check_converged(new_nd_vectors, old_nd_vectors, epsilon):
