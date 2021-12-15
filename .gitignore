@@ -134,3 +134,6 @@ dmypy.json
 
 # IDE files
 .idea/
+
+# Custom
+.DS_Store
