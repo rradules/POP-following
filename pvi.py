@@ -4,7 +4,6 @@ import copy
 import itertools
 import gym
 
-import pandas as pd
 import numpy as np
 
 from collections import namedtuple
@@ -15,12 +14,12 @@ from gym.envs.registration import register
 
 register(
         id='RandomMOMDP-v0',
-        entry_point='randommomdp:RandomMOMDP',
+        entry_point='envs.randommomdp:RandomMOMDP',
 )
 
 register(
         id='DeepSeaTreasure-v0',
-        entry_point='deep_sea_treasure:DeepSeaTreasureEnv',
+        entry_point='envs.deep_sea_treasure:DeepSeaTreasureEnv',
 )
 
 
@@ -104,6 +103,8 @@ def pvi(max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+
+    parser.add_argument('-dir', type=str, default='results/PVI/SDST', help="The directory to save the results.")
     parser.add_argument('-env', type=str, default='RandomMOMDP-v0', help="The environment to run PVI on.")
     parser.add_argument('-states', type=int, default=10, help="The number of states. Only used with the random MOMDP.")
     parser.add_argument('-obj', type=int, default=2, help="The number of objectives. Only used with the random MOMDP.")
@@ -115,7 +116,6 @@ if __name__ == '__main__':
     parser.add_argument('-gamma', type=float, default=0.8, help="The discount factor for expected rewards.")
     parser.add_argument('-epsilon', type=float, default=0.1, help="How much error we tolerate on each objective.")
     parser.add_argument('-decimals', type=int, default=2, help="The number of decimals to include for each return.")
-    parser.add_argument('-dir', type=str, default='results', help='The directory to save all results to.')
     parser.add_argument('-novec', type=int, default=10, help='The number of best vectors to keep.')
 
     args = parser.parse_args()
@@ -156,12 +156,16 @@ if __name__ == '__main__':
     np.random.seed(seed)
     Data = namedtuple('Data', ['vs', 'N', 's', 'a', 'ns'])
 
-    path_data = args.dir
-    mkdir_p(path_data)
-    file = f'PVI_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}_novec{novec}'
+    res_dir = args.dir
+    pcs_dir = f'{res_dir}/PCS'
+    data_dir = f'{res_dir}/data'
+
+    mkdir_p(pcs_dir)
+    mkdir_p(data_dir)
 
     pcs, dataset = pvi(max_iter=num_iters, decimals=decimals, epsilon=epsilon, gamma=gamma, max_vec=novec)  # Run PVI.
 
-    save_training_data(dataset, num_objectives, path_data, file)
-    save_momdp(path_data, file, num_states, num_objectives, num_actions, num_successors, seed, transition_function, reward_function, epsilon, gamma)
-    save_pcs(pcs, file, path_data, num_objectives)
+    print_pcs(pcs)
+    save_training_data(data_dir, dataset, num_objectives)
+    save_momdp(res_dir, num_states, num_objectives, num_actions, num_successors, seed, transition_function, reward_function, epsilon, gamma)
+    save_pcs(pcs_dir, pcs, num_objectives)

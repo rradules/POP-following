@@ -9,22 +9,23 @@ from pymoo.factory import get_performance_indicator
 
 from utils import mkdir_p, get_non_dominated, get_best, print_pcs, save_momdp, save_pcs, save_training_data
 
-
 gym.register(
-        id='RandomMOMDP-v0',
-        entry_point='randommomdp:RandomMOMDP',
+    id='RandomMOMDP-v0',
+    entry_point='envs.randommomdp:RandomMOMDP',
 )
 
 gym.register(
-        id='DeepSeaTreasure-v0',
-        entry_point='deep_sea_treasure:DeepSeaTreasureEnv')
+    id='DeepSeaTreasure-v0',
+    entry_point='envs.deep_sea_treasure:DeepSeaTreasureEnv')
 
 
 class ParetoQ:
     """
     An implementation for a pareto Q learning agent that is able to deal with stochastic environments.
     """
-    def __init__(self, num_states, num_actions, num_objectives, ref_point, gamma=0.8, epsilon=0.1, decimals=2, novec=30):
+
+    def __init__(self, num_states, num_actions, num_objectives, ref_point, gamma=0.8, epsilon=0.1, decimals=2,
+                 novec=30):
         self.num_actions = num_actions
         self.num_states = num_states
         self.num_objectives = num_objectives
@@ -34,10 +35,12 @@ class ParetoQ:
         self.decimals = decimals
         self.novec = novec
 
-        self.hv = get_performance_indicator("hv", ref_point=-1*ref_point)  # Pymoo flips everything.
+        self.hv = get_performance_indicator("hv", ref_point=-1 * ref_point)  # Pymoo flips everything.
 
         # Implemented as recommended by Van Moffaert et al. by substituting (s, a) with (s, a, s').
-        self.non_dominated = [[[{tuple(np.zeros(num_objectives))} for _ in range(num_states)] for _ in range(num_actions)] for _ in range(num_states)]
+        self.non_dominated = [
+            [[{tuple(np.zeros(num_objectives))} for _ in range(num_states)] for _ in range(num_actions)] for _ in
+            range(num_states)]
         self.avg_r = np.zeros((num_states, num_actions, num_states, num_objectives))
         self.transitions = np.zeros((num_states, num_actions, num_states))
 
@@ -83,7 +86,7 @@ class ParetoQ:
             for action in range(self.num_actions):
                 q_set = self.calc_q_set(state, action)
                 q_set = get_non_dominated(q_set)
-                hypervolume = self.hv.do(-1*np.array(list(q_set)))
+                hypervolume = self.hv.do(-1 * np.array(list(q_set)))
                 hypervolumes.append(hypervolume)
             return np.random.choice(np.argwhere(hypervolumes == np.max(hypervolumes)).flatten())
 
@@ -101,14 +104,16 @@ class ParetoQ:
         for a in range(self.num_actions):
             q_sets.append(self.calc_q_set(next_state, a))
         self.non_dominated[state][action][next_state] = get_best(set().union(*q_sets), max_points=self.novec)
-        self.avg_r[state, action, next_state] += (r - self.avg_r[state, action, next_state])/self.transitions[state, action, next_state]
+        self.avg_r[state, action, next_state] += (r - self.avg_r[state, action, next_state]) / self.transitions[
+            state, action, next_state]
 
     def construct_pcs(self):
         """
         This function constructs the final PCS.
         :return: The PCS.
         """
-        pcs = [[{tuple(np.zeros(self.num_objectives))} for _ in range(self.num_actions)] for _ in range(self.num_states)]
+        pcs = [[{tuple(np.zeros(self.num_objectives))} for _ in range(self.num_actions)] for _ in
+               range(self.num_states)]
         for state in range(self.num_states):
             for action in range(self.num_actions):
                 pcs[state][action] = get_non_dominated(self.calc_q_set(state, action))
@@ -157,7 +162,8 @@ def run_pql(env, num_iters=100, max_t=20, decimals=3, epsilon=0.1, gamma=0.8, no
     :param novec: The maximum number of vectors per set.
     :return: The PCS and NN dataset.
     """
-    agent = ParetoQ(num_states, num_actions, num_objectives, ref_point, gamma=gamma, epsilon=epsilon, decimals=decimals, novec=novec)
+    agent = ParetoQ(num_states, num_actions, num_objectives, ref_point, gamma=gamma, epsilon=epsilon, decimals=decimals,
+                    novec=novec)
 
     for i in range(num_iters):
         print(f'Performing iteration {i}')
@@ -181,6 +187,8 @@ def run_pql(env, num_iters=100, max_t=20, decimals=3, epsilon=0.1, gamma=0.8, no
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+
+    parser.add_argument('-dir', type=str, default='results/PQL/RandomMOMDP1', help="The directory to save the results.")
     parser.add_argument('-env', type=str, default='DeepSeaTreasure-v0', help="The environment to run PVI on.")
     parser.add_argument('-states', type=int, default=10, help="The number of states. Only used with the random MOMDP.")
     parser.add_argument('-obj', type=int, default=2, help="The number of objectives. Only used with the random MOMDP.")
@@ -193,7 +201,6 @@ if __name__ == '__main__':
     parser.add_argument('-gamma', type=float, default=1, help="The discount factor for expected rewards.")
     parser.add_argument('-epsilon', type=float, default=0.5, help="How much error we tolerate on each objective.")
     parser.add_argument('-decimals', type=int, default=1, help="The number of decimals to include for each return.")
-    parser.add_argument('-dir', type=str, default='results', help='The directory to save all results to.')
     parser.add_argument('-novec', type=int, default=10, help='The number of best vectors to keep.')
 
     args = parser.parse_args()
@@ -201,7 +208,8 @@ if __name__ == '__main__':
     env_name = args.env
 
     if env_name == 'RandomMOMDP-v0':
-        env = gym.make('RandomMOMDP-v0', nstates=args.states, nobjectives=args.obj, nactions=args.act, nsuccessor=args.suc, seed=args.seed)
+        env = gym.make('RandomMOMDP-v0', nstates=args.states, nobjectives=args.obj, nactions=args.act,
+                       nsuccessor=args.suc, seed=args.seed)
         num_states = env.observation_space.n
         num_actions = env.action_space.n
         num_objectives = env._nobjectives
@@ -210,7 +218,8 @@ if __name__ == '__main__':
         reward_function = env._old_reward_function
         ref_point = np.zeros(num_objectives)
     elif env_name == 'RandomMOMDP-v1':
-        env = gym.make('RandomMOMDP-v0', nstates=args.states, nobjectives=args.obj, nactions=args.act, nsuccessor=args.suc, seed=args.seed)
+        env = gym.make('RandomMOMDP-v0', nstates=args.states, nobjectives=args.obj, nactions=args.act,
+                       nsuccessor=args.suc, seed=args.seed)
         num_states = env.observation_space.n
         num_actions = env.action_space.n
         num_objectives = env._nobjectives
@@ -238,14 +247,18 @@ if __name__ == '__main__':
     np.random.seed(seed)
     Data = namedtuple('Data', ['vs', 'N', 's', 'a', 'ns'])
 
-    path_data = args.dir
-    mkdir_p(path_data)
-    file = f'PQL_s{num_states}_a{num_actions}_o{num_objectives}_ss{args.suc}_seed{args.seed}_novec{novec}'
+    res_dir = args.dir
+    pcs_dir = f'{res_dir}/PCS'
+    data_dir = f'{res_dir}/data'
 
-    pcs, dataset = run_pql(env, num_iters=num_iters, max_t=max_t, decimals=decimals, epsilon=epsilon, gamma=gamma, novec=novec)  # Run PQL.
+    mkdir_p(pcs_dir)
+    mkdir_p(data_dir)
+
+    pcs, dataset = run_pql(env, num_iters=num_iters, max_t=max_t, decimals=decimals, epsilon=epsilon, gamma=gamma,
+                           novec=novec)  # Run PQL.
 
     print_pcs(pcs)
-    save_momdp(path_data, file, num_states, num_objectives, num_actions, num_successors, seed, transition_function,
+    save_momdp(res_dir, num_states, num_objectives, num_actions, num_successors, seed, transition_function,
                reward_function, epsilon, gamma)
-    save_pcs(pcs, file, path_data, num_objectives)
-    save_training_data(dataset, num_objectives, path_data, file)
+    save_pcs(pcs_dir, pcs, num_objectives)
+    save_training_data(data_dir, dataset, num_objectives)
