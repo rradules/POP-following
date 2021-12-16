@@ -16,8 +16,7 @@ module load Python/3.8.6-GCCcore-10.2.0
 module load PyTorch/1.9.0-fosscuda-2020b
 
 # Navigate to the job directory.
-JOBDIR="/POP-following"
-cd $JOBDIR
+cd $VSC_HOME/POP-following
 
 # Activate the virtual environment.
 source venv/bin/activate
