@@ -5,6 +5,7 @@
 #SBATCH --ntasks=1
 #SBATCH --mem=8gb
 #SBATCH --gpus=1
+#SBATCH --partition=pascal_gpu,ampere_gpu
 #SBATCH --mail-user=willem.ropke@vub.be
 #SBATCH --mail-type=ALL
 #SBATCH --output=logs/output-%A.out
