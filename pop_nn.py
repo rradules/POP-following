@@ -106,13 +106,13 @@ def load_network(model_str, num_objectives, dropout=0.5, checkpoint=None):
     return model
 
 
-def train_pop_network(model, train_loader, val_loader, output_file, epochs=1000, predict_every=20):
+def train_pop_network(model, train_loader, val_loader, model_file, epochs=1000, predict_every=20):
     """
     This function trains a neural network.
     :param model: The neural network.
     :param train_loader: The loader for the training data.
     :param val_loader: The loader for the validation data.
-    :param output_file: The filepath for saving the network parameters.
+    :param model_file: The filepath for saving the network parameters.
     :param epochs: The total number of epochs to train for.
     :param predict_every: Test on the validation set when this number of epochs has passed.
     :return: The loss of the best model, the loss over time and the final model.
@@ -159,7 +159,7 @@ def train_pop_network(model, train_loader, val_loader, output_file, epochs=1000,
             total_validation_loss = validation_loss / len(val_loader.dataset)
             if total_validation_loss < best_loss:
                 best_loss = total_validation_loss
-                torch.save(model.state_dict(), output_file)
+                torch.save(model.state_dict(), model_file)
                 print(f'Saving new model with validation loss: {best_loss}')
             else:
                 print(f'Validation loss did not improve. Best model is still at: {best_loss}')
@@ -178,13 +178,12 @@ def train_pop_network(model, train_loader, val_loader, output_file, epochs=1000,
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-data', type=str, default='results/NN_PVI_s110_a4_o2_ss4_seed42_novec10.csv', help='The path to the file containing the training data')
-    parser.add_argument('-output', type=str, default='results/model.pth', help='The file for saving the network.')
+    parser.add_argument('-dir', type=str, default='results/PVI/SDST', help='The results directory.')
     parser.add_argument('-checkpoint', type=str, default=None, help='A pretrained network to finetune.')
     parser.add_argument('-states', type=int, default=110, help="number of states")
     parser.add_argument('-act', type=int, default=4, help="number of actions")
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
-    parser.add_argument('-model', type=str, default='MlpSmall', help="The network architecture to use.")
+    parser.add_argument('-model', type=str, default='Mlp', help="The network architecture to use.")
     parser.add_argument('-normalise', type=bool, default=False, help='Normalise input data')
     parser.add_argument('-epochs', type=int, default=3000, help="epochs")
     parser.add_argument('-batch', type=int, default=1024, help="batch size")
@@ -193,8 +192,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Extract arguments.
-    data_file = args.data
-    output_file = args.output
+    res_dir = args.dir
     checkpoint_file = args.checkpoint
     num_states = args.states
     num_actions = args.act
@@ -205,8 +203,12 @@ if __name__ == '__main__':
     batch = args.batch
     dropout = args.dropout
 
+    # Get filenames.
+    data_file = f'{res_dir}/data/data.csv'
+    model_file = f'{res_dir}/models/{model_str}.pth'
+
     # Load the data and network and train it.
     train_loader, val_loader = preprocess_data(data_file, num_objectives, batch, normalise=normalise, num_states=num_states, num_actions=num_actions)
     model = load_network(model_str, num_objectives, dropout, checkpoint=checkpoint_file)
-    best_loss, loss_over_time, model = train_pop_network(model, train_loader, val_loader, output_file, epochs=epochs)
+    best_loss, loss_over_time, model = train_pop_network(model, train_loader, val_loader, model_file, epochs=epochs)
 
