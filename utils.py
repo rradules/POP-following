@@ -180,7 +180,32 @@ def save_momdp(path, num_states, num_objectives, num_actions, num_successors, se
         'epsilon': epsilon,
         'gamma': gamma
     }
-    json.dump(info, open(f'{path}/momdp.json', "w"))
+
+    with open(f'{path}/momdp.json', 'w') as f:
+        json.dump(info, f)
+
+
+def save_experiment(path, min_pcs, max_pcs, mean_pcs, start_state_pcs, values, seed):
+    """
+    This function saves an experiments metadata.
+    :param path: The path to save the results to.
+    :param min_pcs: The minimum size of all local PCSs.
+    :param max_pcs: The maximum size of all local PCSs.
+    :param mean_pcs: The mean size of all local PCSs.
+    :param start_state_pcs: The size of the PCS in the start state.
+    :param values: The selected value vectors in the experiment.
+    :param seed: The seed for the experiment.
+    :return: /
+    """
+    exp_data = {'min': float(min_pcs),
+                'max': float(max_pcs),
+                'mean': float(mean_pcs),
+                's0': float(start_state_pcs),
+                'values': values,
+                'seed': seed}
+
+    with open(path, 'w') as f:
+        json.dump(exp_data, f)
 
 
 def save_training_data(path, dataset, num_objectives):

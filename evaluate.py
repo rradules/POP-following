@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 
 from pop_nn import load_network
-from utils import is_dominated, additive_epsilon_metric
+from utils import is_dominated, additive_epsilon_metric, save_experiment
 from pop_ls import popf_local_search, popf_iter_local_search, toStavs
 from gym.envs.registration import register
 
@@ -66,6 +66,36 @@ def set_seeds(seed):
     torch.manual_seed(seed)
 
 
+def load_environment(env_file):
+    """
+    This function loads an environment file from JSON and instantiates the environment.
+    :param env_file: The file path for the environment.
+    :return: The environment, transition function, number of objectives and gamma.
+    """
+    with open(env_file, "r") as f:
+        env_info = json.load(f)
+
+    num_states = env_info['states']
+    num_objectives = env_info['objectives']
+    num_actions = env_info['actions']
+    num_successors = env_info['successors']
+    old_seed = env_info['seed']
+    transition_function = np.array(env_info['transition'])
+    reward_function = np.array(env_info['reward'])
+    gamma = env_info['gamma']
+
+    if num_states < 100:
+        env = gym.make('RandomMOMDP-v0', nstates=num_states, nobjectives=num_objectives, nactions=num_actions,
+                       nsuccessor=num_successors, seed=old_seed)
+    else:
+        env = gym.make('DeepSeaTreasure-v0', seed=args.seed, noise=args.noise)
+
+    env._transition_function = transition_function
+    env._reward_function = reward_function
+
+    return env, transition_function, num_objectives, gamma
+
+
 def load_model(model_filename, model_str):
     """
     This function loads a neural network and sets it to the correct mode.
@@ -97,6 +127,25 @@ def preprocess_pcs(pcs, objective_columns):
     start_state_pcs = state_counts[0]
 
     return pcs, min_pcs, max_pcs, avg_pcs, start_state_pcs
+
+
+def load_normalisation(normalise, normalisation_file):
+    """
+    This function loads the normalisation data.
+    :param normalise: Whether to normalise or not.
+    :param normalisation_file: The file containing the parameters used for normalisation.
+    :return: Minimum value and maximum value used for normalisation.
+    """
+    if normalise:
+        with open(normalisation_file, "r") as f:
+            norm_info = json.load(f)
+        d_min = norm_info['min']
+        d_max = norm_info['max']
+    else:
+        d_min = 0
+        d_max = 1
+
+    return d_min, d_max
 
 
 def setup_experiment(env, pcs, objective_columns):
@@ -332,96 +381,56 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-dir', type=str, default='results/PVI/SDST', help='The directory for all files')
-    parser.add_argument('-trials', type=int, default=1, help='Number of trials to run.')
+    parser.add_argument('-trials', type=int, default=10, help='Number of trials to run.')
     parser.add_argument('-episodes', type=int, default=100, help='The number of episodes to run each trial.')
     parser.add_argument('-normalise', type=bool, default=False, help='Normalise input data')
-    parser.add_argument('-states', type=int, default=110, help="number of states")
-    parser.add_argument('-obj', type=int, default=2, help="number of objectives")
-    parser.add_argument('-act', type=int, default=4, help="number of actions")
-    parser.add_argument('-suc', type=int, default=4, help="number of successors")
-    parser.add_argument('-seed', type=int, default=42, help="seed")
-    parser.add_argument('-exp_seed', type=int, default=2, help="experiment seed")
-    parser.add_argument('-model_str', type=str, default='MlpSmall', help='The model architecture to use for evaluation')
-    parser.add_argument('-novec', type=int, default=10, help="No of vectors")
+    parser.add_argument('-model', type=str, default='MlpSmall', help='The model architecture to use for evaluation')
+    parser.add_argument('-seed', type=int, default=1, help="The experiment seed")
     parser.add_argument('-noise', type=float, default=0.1, help="The stochasticity in state transitions.")
-    parser.add_argument('-gamma', type=float, default=1, help='The discount factor for returns.')
 
     args = parser.parse_args()
-
-    # Reload environment.
-    if args.states < 100:
-        env = gym.make('RandomMOMDP-v0', nstates=args.states, nobjectives=args.obj, nactions=args.act,
-                       nsuccessor=args.suc, seed=args.seed)
-        num_states = env.observation_space.n
-        num_actions = env.action_space.n
-        num_objectives = env._nobjectives
-        num_successors = args.suc
-    else:
-        env = gym.make('DeepSeaTreasure-v0', seed=args.seed, noise=args.noise)
-        num_states = env.nS
-        num_actions = env.nA
-        num_objectives = 2
-        num_successors = env.nS
 
     # Extract arguments.
     res_dir = args.dir
     trials = args.trials
     episodes = args.episodes
     normalise = args.normalise
-    model_str = args.model_str
-    gamma = args.gamme
-    exp_seed = args.exp_seed
+    model_str = args.model
+    exp_seed = args.seed
 
-    set_seeds(exp_seed)  # Set seed for random number generation.
+    # Load environment.
+    env_file = f'{res_dir}/momdp.json'
+    env, transition_function, num_objectives, gamma = load_environment(env_file)
 
     # Load PCS.
     pcs_file = f'{res_dir}/PCS/pcs.csv'
+    objective_columns = [f'Objective {i}' for i in range(num_objectives)]
     pcs = pd.read_csv(pcs_file)
-    objective_columns = ['Objective 0', 'Objective 1']
     pcs, min_pcs, max_pcs, mean_pcs, start_state_pcs = preprocess_pcs(pcs, objective_columns)
 
     # Load neural network.
     model_file = f'{res_dir}/models/{model_str}.pth'
     neural_network = load_model(model_file, model_str)
 
-    # Load environment file.
-    env_file = f'{res_dir}/info.json'
-    with open(env_file, "r") as read_file:
-        env_info = json.load(read_file)
+    # Load normalisation parameters.
+    normalisation_file = f'{res_dir}/data/normalisation.json'
+    d_min, d_max = load_normalisation(normalise, normalisation_file)
 
-    # Set random MOMDPs to the original transition and reward functions.
-    transition_function = env_info['transition']
-    reward_function = env_info['reward']
-    env._transition_function = np.array(transition_function)
-    env._reward_function = np.array(reward_function)
-
-    # Set parameters.
-    if normalise:
-        with open(f'{res_dir}/data/normalisation.json', "r") as read_file:
-            norm_info = json.load(read_file)
-        d_min = norm_info['min']
-        d_max = norm_info['max']
-    else:
-        d_min = 0
-        d_max = 1
+    set_seeds(exp_seed)  # Set seed for random number generation.
 
     # Setup results files.
     res_cols = ['Trial', 'Episode', 'Optimiser', 'Value0', 'Value1', 'Runtime', 'Score', 'Repetitions', 'Perturbation']
     results_file = f'{res_dir}/experiment_{exp_seed}.csv'
     exp_columns = ['Trial', 'Value0', 'Value1']
     exp_file = f'{res_dir}/experiment_{exp_seed}.json'
-    exp_data = {'min': float(min_pcs),
-                'max': float(max_pcs),
-                'mean': float(mean_pcs),
-                's0': float(start_state_pcs),
-                'values': []}
+    value_vectors = []
 
     for trial in range(trials):
         print(f'Starting trial {trial}')
         state, action, value_vector = setup_experiment(env, pcs, objective_columns)
         print(f'From state {state} with action {action} selected value vector: {value_vector}')
 
-        exp_data['values'] = value_vector.tolist()
+        value_vectors.append(value_vector.tolist())
         logs_frames = []
 
         regular_logs = run_regular_experiment(env, state, action, value_vector)
@@ -442,5 +451,4 @@ if __name__ == '__main__':
         print(f'Finished trial {trial}')
         print(f'--------------------------------------------------------------------------------')
 
-    with open(exp_file, 'w') as f:
-        json.dump(exp_data, f)
+    save_experiment(exp_file, min_pcs, max_pcs, mean_pcs, start_state_pcs, value_vectors, exp_seed)
