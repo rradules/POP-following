@@ -185,8 +185,8 @@ if __name__ == '__main__':
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
     parser.add_argument('-model', type=str, default='Mlp', help="The network architecture to use.")
     parser.add_argument('-normalise', type=bool, default=False, help='Normalise input data')
-    parser.add_argument('-epochs', type=int, default=3000, help="epochs")
-    parser.add_argument('-batch', type=int, default=1024, help="batch size")
+    parser.add_argument('-epochs', type=int, default=5000, help="epochs")
+    parser.add_argument('-batch', type=int, default=512, help="batch size")
     parser.add_argument('-dropout', type=float, default=0., help='Dropout rate for the neural network')
 
     args = parser.parse_args()
