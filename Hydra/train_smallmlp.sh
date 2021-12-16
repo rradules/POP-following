@@ -22,7 +22,7 @@ cd $VSC_HOME/POP-following
 source venv/bin/activate
 
 # Run the neural network training procedure.
-python pop_nn.py \
+python3 pop_nn.py \
 -model MlpSmall \
 -dir results/PVI/SDST \
 -epochs 5000 \
