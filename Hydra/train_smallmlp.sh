@@ -11,8 +11,8 @@
 #SBATCH --error=logs/err-%A.err
 
 # Load the necessary modules.
-ml Python/3.9.5-GCCcore-10.3.0
-ml PyTorch/1.9.0-fosscuda-2020b
+module load Python/3.9.5-GCCcore-10.3.0
+module load PyTorch/1.9.0-fosscuda-2020b
 
 # Navigate to the job directory.
 JOBDIR="/POP-following"
@@ -22,7 +22,7 @@ cd $JOBDIR
 source venv/bin/activate
 
 # Run the neural network training procedure.
-./pop_nn.py \
+python pop_nn.py \
 -dir results/PVI/SDST \
 -epochs 5000 \
 -batch 512 \
