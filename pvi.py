@@ -105,7 +105,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-dir', type=str, default='results/PVI/SDST', help="The directory to save the results.")
-    parser.add_argument('-env', type=str, default='RandomMOMDP-v0', help="The environment to run PVI on.")
+    parser.add_argument('-env', type=str, default='SDST', help="The environment to run PVI on.")
     parser.add_argument('-states', type=int, default=10, help="The number of states. Only used with the random MOMDP.")
     parser.add_argument('-obj', type=int, default=2, help="The number of objectives. Only used with the random MOMDP.")
     parser.add_argument('-act', type=int, default=2, help="The number of actions. Only used with the random MOMDP.")
