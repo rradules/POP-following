@@ -110,13 +110,14 @@ def load_model(model_filename, model_str):
     return model
 
 
-def preprocess_pcs(pcs, objective_columns):
+def preprocess_pcs(pcs_file, objective_columns):
     """
     This function preprocesses the PCS and calculates statistics on the PCS sizes.
-    :param pcs: The input PCS.
+    :param pcs_file: The file containing the input PCS.
     :param objective_columns: The names of the objective columns.
     :return: The processed PCS as well as the minimum, maximum, mean and start state PCS size.
     """
+    pcs = pd.read_csv(pcs_file)
     pcs[objective_columns] = pcs[objective_columns].apply(pd.to_numeric)
     pcs[['Action', 'State']] = pcs[['Action', 'State']].astype('int32')
 
@@ -381,7 +382,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-dir', type=str, default='results/PVI/SDST', help='The directory for all files')
-    parser.add_argument('-trials', type=int, default=10, help='Number of trials to run.')
+    parser.add_argument('-trials', type=int, default=1, help='Number of trials to run.')
     parser.add_argument('-episodes', type=int, default=100, help='The number of episodes to run each trial.')
     parser.add_argument('-normalise', type=bool, default=False, help='Normalise input data')
     parser.add_argument('-model', type=str, default='MlpSmall', help='The model architecture to use for evaluation')
@@ -405,8 +406,7 @@ if __name__ == '__main__':
     # Load PCS.
     pcs_file = f'{res_dir}/PCS/pcs.csv'
     objective_columns = [f'Objective {i}' for i in range(num_objectives)]
-    pcs = pd.read_csv(pcs_file)
-    pcs, min_pcs, max_pcs, mean_pcs, start_state_pcs = preprocess_pcs(pcs, objective_columns)
+    pcs, min_pcs, max_pcs, mean_pcs, start_state_pcs = preprocess_pcs(pcs_file, objective_columns)
 
     # Load neural network.
     model_file = f'{res_dir}/models/{model_str}.pth'
