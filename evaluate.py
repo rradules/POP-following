@@ -104,7 +104,7 @@ def load_model(model_filename, model_str):
     :return: The neural network.
     """
     model = load_network(model_str, num_objectives)
-    model.load_state_dict(torch.load(model_filename))
+    model.load_state_dict(torch.load(model_filename, map_location='cpu'))
     model.eval()
     torch.no_grad()
     return model
