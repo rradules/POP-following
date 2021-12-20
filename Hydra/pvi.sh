@@ -17,4 +17,6 @@ module load SciPy-bundle/2021.05-foss-2021a
 cd $VSC_HOME/POP-following
 
 # Run the neural network training procedure.
-python3 pvi.py
+python3 pvi.py \
+-novec 15 \
+-num_iters 400
