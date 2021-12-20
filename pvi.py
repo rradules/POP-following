@@ -4,6 +4,7 @@ import copy
 import itertools
 import gym
 
+import pandas as pd
 import numpy as np
 
 from collections import namedtuple
@@ -23,9 +24,31 @@ register(
 )
 
 
-def pvi(max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10):
+def load_pcs(cont, pcs_dir):
+    """
+    This function loads an initial PCS.
+    :param cont: Whether to continue from an old PCS or not.
+    :param pcs_dir: The directory storing the PCS.
+    :return: An initial PCS.
+    """
+    if cont:
+        old_pcs_file = f'{pcs_dir}/pcs.csv'
+        df = pd.read_csv(old_pcs_file)
+        old_pcs = [[set() for _ in range(num_actions)] for _ in range(num_states)]  # Q-set
+        for _, row in df.iterrows():
+            state = int(row['State'])
+            action = int(row['Action'])
+            reward = tuple([row['Objective 0'], row['Objective 1']])
+            old_pcs[state][action].add(reward)
+        return old_pcs
+    else:
+        return [[{tuple(np.zeros(num_objectives))} for _ in range(num_actions)] for _ in range(num_states)]  # Q-set
+
+
+def pvi(init_pcs, max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10):
     """
     This function will run the Pareto Value Iteration algorithm.
+    :param init_pcs: The initial PCS to use as a starting point for PVI.
     :param max_iter: The maximum number of iterations to run PVI for.
     :param decimals: number of decimals to which the value vector should be rounded.
     :param epsilon: closeness to PCS.
@@ -34,7 +57,7 @@ def pvi(max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10):
     """
     start = time.time()
     dataset = []
-    nd_vectors = [[{tuple(np.zeros(num_objectives))} for _ in range(num_actions)] for _ in range(num_states)]  # Q-set
+    nd_vectors = init_pcs
     nd_vectors_update = copy.deepcopy(nd_vectors)
     run = 0  # For printing purposes.
 
@@ -104,6 +127,7 @@ def pvi(max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
+    parser.add_argument('-cont', type=bool, default=True, help='Whether or not to continue from a start PCS.')
     parser.add_argument('-dir', type=str, default='results/PVI/SDST', help="The directory to save the results.")
     parser.add_argument('-env', type=str, default='SDST', help="The environment to run PVI on.")
     parser.add_argument('-states', type=int, default=10, help="The number of states. Only used with the random MOMDP.")
@@ -112,7 +136,7 @@ if __name__ == '__main__':
     parser.add_argument('-suc', type=int, default=4, help="The number of successors. Only used with the random MOMDP.")
     parser.add_argument('-noise', type=float, default=0.1, help="The stochasticity in state transitions.")
     parser.add_argument('-seed', type=int, default=42, help="The seed for random number generation. ")
-    parser.add_argument('-num_iters', type=int, default=1000, help="The maximum number of iterations to run PVI for.")
+    parser.add_argument('-num_iters', type=int, default=200, help="The maximum number of iterations to run PVI for.")
     parser.add_argument('-gamma', type=float, default=1, help="The discount factor for expected rewards.")
     parser.add_argument('-epsilon', type=float, default=0.1, help="How much error we tolerate on each objective.")
     parser.add_argument('-decimals', type=int, default=2, help="The number of decimals to include for each return.")
@@ -155,6 +179,7 @@ if __name__ == '__main__':
     num_iters = args.num_iters
     np.random.seed(seed)
     Data = namedtuple('Data', ['vs', 'N', 's', 'a', 'ns'])
+    cont = args.cont
 
     res_dir = args.dir
     pcs_dir = f'{res_dir}/PCS'
@@ -163,7 +188,8 @@ if __name__ == '__main__':
     mkdir_p(pcs_dir)
     mkdir_p(data_dir)
 
-    pcs, dataset = pvi(max_iter=num_iters, decimals=decimals, epsilon=epsilon, gamma=gamma, max_vec=novec)  # Run PVI.
+    init_pcs = load_pcs(cont, pcs_dir)
+    pcs, dataset = pvi(init_pcs, max_iter=num_iters, decimals=decimals, epsilon=epsilon, gamma=gamma, max_vec=novec)  # Run PVI.
 
     print_pcs(pcs)
     save_training_data(data_dir, dataset, num_objectives)
