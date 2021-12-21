@@ -99,14 +99,34 @@ def load_network(model_str, num_objectives, dropout=0.5, checkpoint=None):
     elif model_str == 'MlpBatchnorm':
         model = MlpWithBatchNorm(d_in, d_out, dropout)
     else:
-        raise Exception
+        raise Exception("Model architecture not known.")
 
     if checkpoint is not None:
         model.load_state_dict(torch.load(checkpoint))
     return model
 
 
-def train_pop_network(model, train_loader, val_loader, model_file, epochs=1000, predict_every=20):
+def train_batch(model, loss_function, optimizer, data, target):
+    """
+    This function trains a model on a single batch. This is a distinct function, as it is used by both the offline
+    training as well as online training of the neural networks.
+    :param model: The model to train.
+    :param loss_function: The chosen loss function.
+    :param optimizer: The initialised optimiser.
+    :param data: The input data.
+    :param target: The output targets.
+    :return: The trained model, the optimizer and loss.
+    """
+    optimizer.zero_grad()
+    output = model(data)
+    loss = loss_function(output, target)
+    loss.backward()
+    optimizer.step()
+    loss += output.shape[0] * loss.item()
+    return model, optimizer, loss
+
+
+def offline_train(model, train_loader, val_loader, model_file, epochs=1000, predict_every=20):
     """
     This function trains a neural network.
     :param model: The neural network.
@@ -134,12 +154,8 @@ def train_pop_network(model, train_loader, val_loader, model_file, epochs=1000, 
         for batch_idx, (data, target) in enumerate(train_loader):
             data = data.to(device)
             target = target.to(device)
-            optimizer.zero_grad()
-            output = model(data)
-            loss = loss_function(output, target)
-            loss.backward()
-            optimizer.step()
-            epoch_loss += output.shape[0] * loss.item()
+            model, optimizer, loss = train_batch(model, loss_function, optimizer, data, target)
+            epoch_loss += loss
 
         total_loss = epoch_loss / len(train_loader.dataset)
         loss_over_time.append(total_loss)
@@ -183,7 +199,7 @@ if __name__ == '__main__':
     parser.add_argument('-states', type=int, default=110, help="number of states")
     parser.add_argument('-act', type=int, default=4, help="number of actions")
     parser.add_argument('-obj', type=int, default=2, help="number of objectives")
-    parser.add_argument('-model', type=str, default='Mlp', help="The network architecture to use.")
+    parser.add_argument('-model', type=str, default='MlpSmall', help="The network architecture to use.")
     parser.add_argument('-normalise', type=bool, default=False, help='Normalise input data')
     parser.add_argument('-epochs', type=int, default=5000, help="epochs")
     parser.add_argument('-batch', type=int, default=512, help="batch size")
@@ -204,11 +220,11 @@ if __name__ == '__main__':
     dropout = args.dropout
 
     # Get filenames.
-    data_file = f'{res_dir}/data/data.csv'
+    data_file = f'{res_dir}/data/training_data.csv'
     model_file = f'{res_dir}/models/{model_str}.pth'
 
     # Load the data and network and train it.
     train_loader, val_loader = preprocess_data(data_file, num_objectives, batch, normalise=normalise, num_states=num_states, num_actions=num_actions)
     model = load_network(model_str, num_objectives, dropout, checkpoint=checkpoint_file)
-    best_loss, loss_over_time, model = train_pop_network(model, train_loader, val_loader, model_file, epochs=epochs)
+    best_loss, loss_over_time, model = offline_train(model, train_loader, val_loader, model_file, epochs=epochs)
 
