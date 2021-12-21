@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --job-name=pvi
-#SBATCH --time=1-00:00:00
+#SBATCH --time=2-00:00:00
 #SBATCH --ntasks=1
 #SBATCH --mem=64gb
 #SBATCH --mail-user=willem.ropke@vub.be
@@ -19,4 +19,4 @@ cd $VSC_HOME/POP-following
 # Run the neural network training procedure.
 python3 pvi.py \
 -novec 15 \
--num_iters 400
+-num_iters 200
