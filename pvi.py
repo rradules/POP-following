@@ -3,6 +3,7 @@ import time
 import copy
 import itertools
 import gym
+import os.path
 
 import pandas as pd
 import numpy as np
@@ -33,19 +34,19 @@ def load_pcs(cont, pcs_dir):
     """
     if cont:
         old_pcs_file = f'{pcs_dir}/pcs.csv'
-        df = pd.read_csv(old_pcs_file)
-        old_pcs = [[set() for _ in range(num_actions)] for _ in range(num_states)]  # Q-set
-        for _, row in df.iterrows():
-            state = int(row['State'])
-            action = int(row['Action'])
-            reward = tuple([row['Objective 0'], row['Objective 1']])
-            old_pcs[state][action].add(reward)
-        return old_pcs
-    else:
-        return [[{tuple(np.zeros(num_objectives))} for _ in range(num_actions)] for _ in range(num_states)]  # Q-set
+        if os.path.isfile(old_pcs_file):  # Check if the file exists.
+            df = pd.read_csv(old_pcs_file)
+            old_pcs = [[set() for _ in range(num_actions)] for _ in range(num_states)]  # Q-set
+            for _, row in df.iterrows():
+                state = int(row['State'])
+                action = int(row['Action'])
+                reward = tuple([row['Objective 0'], row['Objective 1']])
+                old_pcs[state][action].add(reward)
+            return old_pcs
+    return [[{tuple(np.zeros(num_objectives))} for _ in range(num_actions)] for _ in range(num_states)]  # Q-set
 
 
-def pvi(init_pcs, max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10):
+def pvi(init_pcs, max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10, save_every=10):
     """
     This function will run the Pareto Value Iteration algorithm.
     :param init_pcs: The initial PCS to use as a starting point for PVI.
@@ -53,18 +54,19 @@ def pvi(init_pcs, max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10
     :param decimals: number of decimals to which the value vector should be rounded.
     :param epsilon: closeness to PCS.
     :param gamma: discount factor.
+    :param save_every: Save the current PCS and neural network dataset every number of iterations.
     :return: A set of non-dominated vectors per state in the MOMDP.
     """
     start = time.time()
     dataset = []
     nd_vectors = init_pcs
     nd_vectors_update = copy.deepcopy(nd_vectors)
-    run = 0  # For printing purposes.
 
-    last_iter = max_iter - 1
+    last_iter = max_iter - 2  # Denotes the start of the last run.
     is_last = False
+    save_iteration = False
 
-    while True:  # We execute the algorithm until convergence.
+    for run in range(max_iter):  # We execute the algorithm for a number of iterations.
         print(f'Value Iteration number: {run}')
 
         for state in range(num_states):  # Loop over all states.
@@ -99,7 +101,7 @@ def pvi(init_pcs, max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10
                     future_reward = tuple(np.around(future_reward, decimals=decimals))  # Round the future reward.
                     N = tuple(np.around(N, decimals=decimals))  # Round N.
 
-                    if is_last:
+                    if save_iteration or is_last:
                         for next_state, next_vector in zip(next_states, next_vectors):  # Add the trajectory to the dataset.
                             dataset.append(Data(next_vector, N, state, action, next_state))
 
@@ -107,15 +109,19 @@ def pvi(init_pcs, max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10
 
                 nd_vectors_update[state][action] = get_best(candidate_vectors, max_points=max_vec)  # Save ND for updating later.
         if is_last:
-            break  # If we performed the last iteration, break from the while loop.
-        if check_converged(nd_vectors_update, nd_vectors, epsilon):  # Check if we converged already.
+            break
+        if save_iteration:
+            print("Saving this round")
+            save_training_data(data_dir, dataset, num_objectives)
+            save_pcs(pcs_dir, nd_vectors_update, num_objectives)
+            save_iteration = False
+            dataset = []
+        if run % save_every == 0:
+            save_iteration = True
+        if check_converged(nd_vectors_update, nd_vectors, epsilon) or run >= last_iter:  # Check if we converged or are in the last run.
             max_vec = None  # Save everything in the last iteration.
             is_last = True
-        else:
-            nd_vectors = copy.deepcopy(nd_vectors_update)  # Else perform a deep copy an go again.
-            run += 1
-            if run >= last_iter:
-                is_last = True
+        nd_vectors = copy.deepcopy(nd_vectors_update)  # Else perform a deep copy an go again.
 
     end = time.time()
     elapsed_seconds = (end - start)
