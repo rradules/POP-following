@@ -1,4 +1,5 @@
 import random
+import numpy as np
 from collections import deque
 
 
@@ -11,24 +12,28 @@ class ReplayBuffer:
         self.capacity = capacity
         self.batch_size = batch_size
 
-    def append(self, N, state, action, next_state, new_vec):
+    def append(self, new_vec, N, state, action, next_state):
         """
         Add an experience to the buffer.
+        :param new_vec: The new vector to follow from this experience.
         :param N: The N vector from the experience.
         :param state: The state from the experience.
         :param action: The action from the experience.
         :param next_state: The next state from the experience.
-        :param new_vec: The new vector to follow from this experience.
         :return: /
         """
-        self.buffer.append([N, state, action, next_state, new_vec])
+        entry = []  # We first flatten all inputs so that we can later easily extract them.
+        entry.extend(new_vec)
+        entry.extend(N)
+        entry.extend([state, action, next_state])
+        self.buffer.append(entry)
 
     def sample(self):
         """
         Sample experiences from the from the buffer.
         :return: A batch of experiences.
         """
-        return random.sample(self.buffer, self.batch_size)
+        return np.array(random.sample(self.buffer, self.batch_size))
 
     def can_sample(self):
         return self.size() >= self.batch_size

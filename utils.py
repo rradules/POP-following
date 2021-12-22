@@ -234,6 +234,30 @@ def save_training_data(path, dataset, num_objectives):
     df.to_csv(f'{path}/training_data.csv', index=False)
 
 
+def load_pcs(cont, pcs_dir, num_states, num_actions, num_objectives):
+    """
+    This function loads an initial PCS.
+    :param cont: Whether to continue from an old PCS or not.
+    :param pcs_dir: The directory storing the PCS.
+    :param num_states: The number of states in the MOMDP.
+    :param num_actions: The number of actions in the MOMDP.
+    :param num_objectives: The number of objectives in the MOMDP.
+    :return: An initial PCS.
+    """
+    if cont:
+        old_pcs_file = f'{pcs_dir}/pcs.csv'
+        if os.path.isfile(old_pcs_file):  # Check if the file exists.
+            df = pd.read_csv(old_pcs_file)
+            old_pcs = [[set() for _ in range(num_actions)] for _ in range(num_states)]  # Q-set
+            for _, row in df.iterrows():
+                state = int(row['State'])
+                action = int(row['Action'])
+                reward = tuple([row['Objective 0'], row['Objective 1']])
+                old_pcs[state][action].add(reward)
+            return old_pcs
+    return [[{tuple(np.zeros(num_objectives))} for _ in range(num_actions)] for _ in range(num_states)]  # Q-set
+
+
 def check_converged(new_nd_vectors, old_nd_vectors, epsilon):
     """
     This function checks if the PCS has converged.

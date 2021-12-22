@@ -3,13 +3,15 @@ import time
 import copy
 import itertools
 import gym
-import os.path
+import torch
 
-import pandas as pd
+import torch.nn as nn
 import numpy as np
 
 from collections import namedtuple
-from utils import mkdir_p, save_training_data, check_converged, print_pcs, save_pcs, save_momdp, get_best
+from utils import mkdir_p, save_training_data, check_converged, print_pcs, save_pcs, save_momdp, get_best, load_pcs
+from pop_nn import train_batch, load_network
+from replay_buffer import ReplayBuffer
 
 from gym.envs.registration import register
 
@@ -25,27 +27,6 @@ register(
 )
 
 
-def load_pcs(cont, pcs_dir):
-    """
-    This function loads an initial PCS.
-    :param cont: Whether to continue from an old PCS or not.
-    :param pcs_dir: The directory storing the PCS.
-    :return: An initial PCS.
-    """
-    if cont:
-        old_pcs_file = f'{pcs_dir}/pcs.csv'
-        if os.path.isfile(old_pcs_file):  # Check if the file exists.
-            df = pd.read_csv(old_pcs_file)
-            old_pcs = [[set() for _ in range(num_actions)] for _ in range(num_states)]  # Q-set
-            for _, row in df.iterrows():
-                state = int(row['State'])
-                action = int(row['Action'])
-                reward = tuple([row['Objective 0'], row['Objective 1']])
-                old_pcs[state][action].add(reward)
-            return old_pcs
-    return [[{tuple(np.zeros(num_objectives))} for _ in range(num_actions)] for _ in range(num_states)]  # Q-set
-
-
 def pvi(init_pcs, max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10, save_every=10):
     """
     This function will run the Pareto Value Iteration algorithm.
@@ -57,6 +38,13 @@ def pvi(init_pcs, max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10
     :param save_every: Save the current PCS and neural network dataset every number of iterations.
     :return: A set of non-dominated vectors per state in the MOMDP.
     """
+    if train:
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        model = load_network(model_str, num_objectives, dropout).to(device)
+        loss_function = nn.MSELoss()
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+        replay_buffer = ReplayBuffer(capacity=50000, batch_size=64)
+
     start = time.time()
     dataset = []
     nd_vectors = init_pcs
@@ -101,9 +89,19 @@ def pvi(init_pcs, max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10
                     future_reward = tuple(np.around(future_reward, decimals=decimals))  # Round the future reward.
                     N = tuple(np.around(N, decimals=decimals))  # Round N.
 
-                    if save_iteration or is_last:
+                    if save_iteration or is_last or train:
                         for next_state, next_vector in zip(next_states, next_vectors):  # Add the trajectory to the dataset.
-                            dataset.append(Data(next_vector, N, state, action, next_state))
+                            if save_iteration or is_last:
+                                dataset.append(Data(next_vector, N, state, action, next_state))
+                            if train:
+                                replay_buffer.append(next_vector, N, state, action, next_state)
+
+                    if train and replay_buffer.can_sample():
+                        batch = replay_buffer.sample()
+                        data = torch.tensor(batch[:, :-num_objectives], dtype=torch.float32)
+                        target = torch.tensor(batch[:, -num_objectives], dtype=torch.float32).unsqueeze(dim=1)
+                        model, optimizer, loss = train_batch(model, loss_function, optimizer, data, target)
+                        print(f'Loss in run {run}: {loss}')
 
                     candidate_vectors.add(future_reward)  # Add this future reward as a candidate.
 
@@ -133,6 +131,9 @@ def pvi(init_pcs, max_iter=1000, decimals=4, epsilon=0.05, gamma=0.8, max_vec=10
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
+    parser.add_argument('-train', type=bool, default=False, help='Train a neural network online')
+    parser.add_argument('-model', type=str, default='MlpSmall', help="The network architecture to use.")
+    parser.add_argument('-dropout', type=float, default=0., help='Dropout rate for the neural network')
     parser.add_argument('-cont', type=bool, default=True, help='Whether or not to continue from a start PCS.')
     parser.add_argument('-dir', type=str, default='results/PVI/SDST', help="The directory to save the results.")
     parser.add_argument('-env', type=str, default='SDST', help="The environment to run PVI on.")
@@ -186,6 +187,9 @@ if __name__ == '__main__':
     np.random.seed(seed)
     Data = namedtuple('Data', ['vs', 'N', 's', 'a', 'ns'])
     cont = args.cont
+    train = args.train
+    model_str = args.model
+    dropout = args.dropout
 
     res_dir = args.dir
     pcs_dir = f'{res_dir}/PCS'
@@ -194,7 +198,7 @@ if __name__ == '__main__':
     mkdir_p(pcs_dir)
     mkdir_p(data_dir)
 
-    init_pcs = load_pcs(cont, pcs_dir)
+    init_pcs = load_pcs(cont, pcs_dir, num_states, num_actions, num_objectives)
     pcs, dataset = pvi(init_pcs, max_iter=num_iters, decimals=decimals, epsilon=epsilon, gamma=gamma, max_vec=novec)  # Run PVI.
 
     print_pcs(pcs)
