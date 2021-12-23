@@ -3,7 +3,7 @@
 #SBATCH --job-name=train_smallmlp
 #SBATCH --time=24:00:00
 #SBATCH --ntasks=1
-#SBATCH --mem=8gb
+#SBATCH --mem=32gb
 #SBATCH --gpus=1
 #SBATCH --partition=pascal_gpu,ampere_gpu
 #SBATCH --mail-user=willem.ropke@vub.be
