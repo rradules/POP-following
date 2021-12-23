@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --job-name=pvi
-#SBATCH --time=5-00:00:00
+#SBATCH --time=1-00:00:00
 #SBATCH --ntasks=1
 #SBATCH --mem=128gb
 #SBATCH --mail-user=willem.ropke@vub.be
