@@ -3,7 +3,9 @@ import time
 import copy
 import itertools
 import gym
+import torch
 
+import torch.nn as nn
 import numpy as np
 
 from collections import namedtuple
@@ -195,10 +197,6 @@ if __name__ == '__main__':
 
     mkdir_p(pcs_dir)
     mkdir_p(data_dir)
-
-    if train:  # Only import these modules when we actually want to train.
-        import torch
-        import torch.nn as nn
 
     init_pcs = load_pcs(cont, pcs_dir, num_states, num_actions, num_objectives)
     pcs, dataset = pvi(init_pcs, max_iter=num_iters, decimals=decimals, epsilon=epsilon, gamma=gamma, max_vec=novec)  # Run PVI.

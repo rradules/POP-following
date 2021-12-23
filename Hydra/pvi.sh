@@ -10,8 +10,8 @@
 #SBATCH --error=logs/err-%A.err
 
 # Load the necessary modules.
+module load PyTorch/1.6.0-foss-2019b-Python-3.7.4
 module load OpenAI-Gym/0.17.1-foss-2019b-Python-3.7.4
-module load SciPy-bundle/2021.05-foss-2021a
 
 # Navigate to the job directory.
 cd $VSC_HOME/POP-following
