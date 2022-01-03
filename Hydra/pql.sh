@@ -3,7 +3,7 @@
 #SBATCH --job-name=pql
 #SBATCH --time=1-00:00:00
 #SBATCH --ntasks=1
-#SBATCH --mem=128gb
+#SBATCH --mem=64gb
 #SBATCH --mail-user=willem.ropke@vub.be
 #SBATCH --mail-type=ALL
 #SBATCH --output=logs/output-%A.out
@@ -24,5 +24,6 @@ cd $VSC_HOME/POP-following
 
 # Run the neural network training procedure.
 python3 pareto_q.py \
+-dir results/PQL/SDST \
 -novec 10 \
 -num_iters 200

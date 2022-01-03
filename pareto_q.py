@@ -188,8 +188,8 @@ def run_pql(env, num_iters=100, max_t=20, decimals=3, epsilon=0.1, gamma=0.8, no
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-dir', type=str, default='results/PQL/RandomMOMDP1', help="The directory to save the results.")
-    parser.add_argument('-env', type=str, default='DeepSeaTreasure-v0', help="The environment to run PVI on.")
+    parser.add_argument('-dir', type=str, default='results/PQL/SDST', help="The directory to save the results.")
+    parser.add_argument('-env', type=str, default='SDST', help="The environment to run PVI on.")
     parser.add_argument('-states', type=int, default=10, help="The number of states. Only used with the random MOMDP.")
     parser.add_argument('-obj', type=int, default=2, help="The number of objectives. Only used with the random MOMDP.")
     parser.add_argument('-act', type=int, default=2, help="The number of actions. Only used with the random MOMDP.")
