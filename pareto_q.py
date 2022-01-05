@@ -150,7 +150,7 @@ class ParetoQ:
         return dataset
 
 
-def run_pql(env, num_iters=100, max_t=20, decimals=3, epsilon=0.1, gamma=0.8, novec=30):
+def run_pql(env, num_iters=100, max_t=20, decimals=3, epsilon=0.1, gamma=0.8, novec=30, save_every=10):
     """
     This function runs PQL.
     :param env: The environment the run PQL in.
@@ -178,6 +178,12 @@ def run_pql(env, num_iters=100, max_t=20, decimals=3, epsilon=0.1, gamma=0.8, no
             agent.update(state, action, next_state, r)
             state = next_state
             timestep += 1
+
+        if i % save_every == 0:
+            pcs = agent.construct_pcs()
+            nn_dataset = agent.construct_nn_dataset()
+            save_pcs(pcs_dir, pcs, num_objectives)
+            save_training_data(data_dir, nn_dataset, num_objectives)
 
     pcs = agent.construct_pcs()
     nn_dataset = agent.construct_nn_dataset()
